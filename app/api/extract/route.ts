@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'; // NextRequest'i buraya ekledik
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as cheerio from 'cheerio';
 
-export async function POST(request) {
+// Fonksiyonun içine ': NextRequest' ekleyerek tipi belirledik
+export async function POST(request: NextRequest) { 
   try {
     const { url } = await request.json();
+    if (!url) return NextResponse.json({ error: 'URL gerekli' }, { status: 400 });
 
     const response = await fetch(url, {
       headers: {
@@ -16,40 +18,24 @@ export async function POST(request) {
     const $ = cheerio.load(html);
     const description = $('meta[property="og:description"]').attr('content') || '';
     const title = $('meta[property="og:title"]').attr('content') || '';
-    
-    const rawContent = title + "\n" + description;
+    const rawContent = `${title}\n${description}`;
 
-    if (!rawContent || rawContent.trim() === '') {
-      return NextResponse.json({ error: 'İçerik bulunamadı veya sayfa gizli.' }, { status: 400 });
-    }
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return NextResponse.json({ error: 'API Key eksik' }, { status: 500 });
 
-    // API anahtarını doğrudan sistem değişkeninden alır
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash', 
-      generationConfig: { responseMimeType: 'application/json' } 
+      model: 'gemini-1.5-flash',
+      generationConfig: { responseMimeType: 'application/json' }
     });
 
-    const prompt = `Aşağıdaki metinden yemek tarifini çıkar. Gereksiz kısımları at. Çıktıyı tam olarak şu JSON formatında ver:
-    {
-      "title": "Tarif Adı",
-      "prepTimeMinutes": 30,
-      "originalServings": 4,
-      "tags": ["Kategori1", "Kategori2"],
-      "ingredients": [
-        {"name": "malzeme adı", "amount": 500, "unit": "gram"}
-      ],
-      "steps": ["Adım 1...", "Adım 2..."]
-    }
-    
-    İncelenecek Veri:
-    ${rawContent}`;
+    const prompt = `Aşağıdaki metinden yemek tarifini çıkar. Çıktıyı şu JSON formatında ver: {"title": "Ad", "prepTimeMinutes": 30, "originalServings": 4, "tags": [], "ingredients": [{"name": "x", "amount": 1, "unit": "y"}], "steps": ["1"]}. Veri: ${rawContent}`;
 
     const aiResult = await model.generateContent(prompt);
-    const recipeJson = JSON.parse(aiResult.response.text());
-
-    return NextResponse.json(recipeJson);
-  } catch (error) {
+    const text = aiResult.response.text();
+    return NextResponse.json(JSON.parse(text));
+    
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
