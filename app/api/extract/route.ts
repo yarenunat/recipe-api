@@ -79,7 +79,15 @@ NULL GÜVENLİĞİ: Veri bulunamazsa String için "", Liste için [] döndür. A
     // Clean up markdown blocks if the LLM still returns them
     content = content.replace(/^```json\s*/, '').replace(/```$/, '').trim();
 
-    return NextResponse.json(JSON.parse(content), { headers: corsHeaders });
+    const parsedData = JSON.parse(content);
+
+    // Eğer imageUrl boşsa, yapay zeka ile (Pollinations) estetik bir resim oluştur
+    if (!parsedData.imageUrl || parsedData.imageUrl.trim() === "") {
+      const prompt = `${parsedData.title || "delicious food"} aesthetic beautiful highly detailed food photography, top down view, delicious, 4k, studio lighting`;
+      parsedData.imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&nologo=true`;
+    }
+
+    return NextResponse.json(parsedData, { headers: corsHeaders });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
