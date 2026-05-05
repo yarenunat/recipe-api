@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,7 +7,7 @@ const corsHeaders = {
 };
 
 export async function GET() {
-  return NextResponse.json({ mesaj: "Sistem Hazır! ✨" }, { headers: corsHeaders });
+  return NextResponse.json({ mesaj: "Groq Sistemi Aktif! 🚀" }, { headers: corsHeaders });
 }
 
 export async function OPTIONS() {
@@ -17,31 +16,38 @@ export async function OPTIONS() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { url } = body;
-    const apiKey = process.env.GEMINI_API_KEY || "";
+    const { url } = await req.json();
+    const apiKey = process.env.GROQ_API_KEY;
 
-    // SDK'yı v1 versiyonuna zorluyoruz
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // NOT: Bazı hesaplarda model ismi 'gemini-1.5-flash' iken bazılarında 'models/gemini-1.5-flash' gerekebilir.
-    // Biz en güvenli olan 'gemini-1.5-flash' ismini kullanacağız.
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Llama 3 modelini kullanarak tarif analizi yapıyoruz
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: "Sadece linkteki yemeğin tarifini analiz et ve JSON formatında döndür. Asla açıklama yazma."
+          },
+          {
+            role: "user",
+            content: `Bu linkteki tarifi analiz et: ${url}`
+          }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
 
-    const prompt = `Bu linkteki yemek tarifini analiz et ve JSON olarak döndür: ${url}`;
+    const data = await response.json();
+    const recipeData = JSON.parse(data.choices[0].message.content);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
-
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return NextResponse.json(JSON.parse(text), { headers: corsHeaders });
+    return NextResponse.json(recipeData, { headers: corsHeaders });
 
   } catch (error: any) {
-    console.error("KRİTİK HATA:", error.message);
-    return NextResponse.json({ 
-      error: 'Google API Yanıt Vermedi', 
-      detay: error.message 
-    }, { status: 500, headers: corsHeaders });
+    return NextResponse.json({ error: "Groq Hatası: " + error.message }, { status: 500, headers: corsHeaders });
   }
 }
