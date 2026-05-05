@@ -58,8 +58,9 @@ title: Yemeğin adı (String).
 imageUrl: Varsa görsel linki, yoksa "" (String).
 prepTimeMinutes: Hazırlama süresi (Integer).
 servings: Kaç kişilik olduğu (Integer).
+calories: Toplam kalori tahmini (String, örn: "450 kcal").
 tags: Yemekle ilgili etiketler (List).
-ingredients: Malzemeler (List). Her eleman şu yapıda olmalı: {"name": String, "amount": double, "unit": String}.
+ingredients: Malzemeler (List). Her eleman şu yapıda olmalı: {"name": String, "amount": double, "unit": String, "icon": String (Malzemeye en uygun 1 adet Emoji, örn: 🍅, 🥩, 🧀)}.
 instructions: Hazırlanış adımları (List).
 TOKEN TASARRUFU: Hiçbir ön açıklama, selamlama veya kapanış cümlesi ekleme. Yanıt doğrudan "{" ile başlamalı ve "}" ile bitmeli.
 SOSYAL MEDYA: Eğer girdi bir sosyal medya açıklamasıysa, emojileri temizle ve dağınık haldeki tarif bilgisini mantıklı bir sıraya koyarak normalize et.
