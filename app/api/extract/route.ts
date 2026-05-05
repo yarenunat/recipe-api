@@ -31,7 +31,8 @@ export async function POST(req: Request) {
         if (mlData.status === 'success' && mlData.data) {
           const title = mlData.data.title || '';
           const desc = mlData.data.description || '';
-          contentToAnalyze = `Başlık: ${title}\nİçerik/Açıklama: ${desc}\nOrijinal URL: ${url}`;
+          const imageUrl = mlData.data.image?.url || '';
+          contentToAnalyze = `Başlık: ${title}\nİçerik/Açıklama: ${desc}\nGörsel URL: ${imageUrl}\nOrijinal URL: ${url}`;
         }
       } catch (err) {
         console.error("Scraping error:", err);
