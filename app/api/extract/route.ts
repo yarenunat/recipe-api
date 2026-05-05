@@ -110,3 +110,10 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+// Bu kodu route.ts dosyasının en altına ekle
+export async function GET() {
+  return NextResponse.json(
+    { mesaj: "API Başarıyla Çalışıyor! Sihir Başlasın! ✨" }, 
+    { headers: corsHeaders }
+  );
+}
