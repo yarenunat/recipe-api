@@ -33,7 +33,8 @@ export async function POST(req: Request) {
 
     // Vercel'den GEMINI_API_KEY'i alır
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Sadece içindeki ismi 'gemini-pro' olarak değiştiriyoruz:
+const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     const prompt = `Aşağıdaki web sitesindeki yemek tarifini analiz et ve ÇOK SIKI bir JSON formatında döndür. Asla JSON formatı dışına çıkma. 
     Site URL: ${url}
