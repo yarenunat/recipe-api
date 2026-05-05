@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 export async function GET() {
-  return NextResponse.json({ mesaj: "Groq Sistemi Aktif! 🚀" }, { headers: corsHeaders });
+  return NextResponse.json({ mesaj: "Sistem Aktif! 🚀" }, { headers: corsHeaders });
 }
 
 export async function OPTIONS() {
@@ -19,7 +19,10 @@ export async function POST(req: Request) {
     const { url } = await req.json();
     const apiKey = process.env.GROQ_API_KEY;
 
-    // Llama 3 modelini kullanarak tarif analizi yapıyoruz
+    if (!apiKey) {
+      return NextResponse.json({ error: "GROQ_API_KEY Vercel'de eksik!" }, { status: 500, headers: corsHeaders });
+    }
+
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -31,8 +34,7 @@ export async function POST(req: Request) {
         messages: [
           {
             role: "system",
-            // system içeriğini tam olarak bununla değiştir:
-content: "Sadece linkteki yemeğin tarifini analiz et ve ŞU ANAHTARLARA sahip bir JSON döndür: title (String), imageUrl (String), prepTimeMinutes (int), servings (int), difficulty (String), ingredients (List<String>), instructions (List<String>). Asla açıklama yazma."
+            content: "Sadece linkteki yemeğin tarifini analiz et ve ŞU ANAHTARLARA sahip bir JSON döndür: title, imageUrl, prepTimeMinutes, servings, difficulty, ingredients (liste), instructions (liste). imageUrl için yemeğin görsel linkini bulmaya çalış, bulamazsan boş string döndür. Asla açıklama yazma."
           },
           {
             role: "user",
@@ -44,11 +46,12 @@ content: "Sadece linkteki yemeğin tarifini analiz et ve ŞU ANAHTARLARA sahip b
     });
 
     const data = await response.json();
-    const recipeData = JSON.parse(data.choices[0].message.content);
-
-    return NextResponse.json(recipeData, { headers: corsHeaders });
+    const content = data.choices[0].message.content;
+    
+    return NextResponse.json(JSON.parse(content), { headers: corsHeaders });
 
   } catch (error: any) {
-    return NextResponse.json({ error: "Groq Hatası: " + error.message }, { status: 500, headers: corsHeaders });
+    console.error("Groq Hatası:", error.message);
+    return NextResponse.json({ error: "API Hatası: " + error.message }, { status: 500, headers: corsHeaders });
   }
 }
