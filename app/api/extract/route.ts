@@ -65,7 +65,10 @@ instructions: Hazırlanış adımları (List).
 TOKEN TASARRUFU: Hiçbir ön açıklama, selamlama veya kapanış cümlesi ekleme. Yanıt doğrudan "{" ile başlamalı ve "}" ile bitmeli.
 SOSYAL MEDYA: Eğer girdi bir sosyal medya açıklamasıysa, emojileri temizle ve dağınık haldeki tarif bilgisini mantıklı bir sıraya koyarak normalize et.
 MİKTAR KURALI: Malzemenin miktarı belirsizse (örn: "bir tutam", "biraz") amount değerini 0 döndür.
-NULL GÜVENLİĞİ: Veri bulunamazsa String için "", Liste için [] döndür. Ancak Süre, Porsiyon ve Kalori için KESİNLİKLE TAHMİN YAP.`
+
+ADIM DETAYLARI: Tarifin hazırlık ve pişirme adımlarını çok detaylı ve uzun yaz. Fırın derecesi, kaç dakika pişirileceği veya kaç saat dolapta bekletileceği gibi zaman/sıcaklık bilgilerini HER ADIMDA mutlaka açıkça belirt. Kısa geçiştirme.
+
+TAHMİN ZORUNLULUĞU (ÇOK ÖNEMLİ): Eğer metinde yemeğin "Hazırlama Süresi", "Porsiyon (Kaç Kişilik)" veya "Kalori" bilgisi YAZMIYORSA, genel mutfak kültürüne göre ZORUNLU OLARAK mantıklı bir tahminde bulun! (Örn: prepTimeMinutes: 45, servings: 4, calories: "350 kcal"). Asla 0, null veya "bilinmiyor" döndürme. Tahmin et!`
           },
           { role: "user", content: `Analiz et:\n${contentToAnalyze}` }
         ],
@@ -81,11 +84,9 @@ NULL GÜVENLİĞİ: Veri bulunamazsa String için "", Liste için [] döndür. A
 
     const parsedData = JSON.parse(content);
 
-    // Eğer imageUrl boşsa, yapay zeka ile (Pollinations) estetik bir resim oluştur
-    if (!parsedData.imageUrl || parsedData.imageUrl.trim() === "") {
-      const prompt = `${parsedData.title || "delicious food"} aesthetic beautiful highly detailed food photography, top down view, delicious, 4k, studio lighting`;
-      parsedData.imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&nologo=true`;
-    }
+    // Orijinal görselde video play ikonu vs. olabildiği için HER ZAMAN Yapay Zeka ile tertemiz bir görsel oluştur
+    const prompt = `${parsedData.title || "delicious food"} aesthetic beautiful highly detailed food photography, top down view, soft warm lighting, 4k, gourmet, delicious`;
+    parsedData.imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&nologo=true`;
 
     return NextResponse.json(parsedData, { headers: corsHeaders });
 
