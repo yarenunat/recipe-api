@@ -21,6 +21,23 @@ export async function POST(req: Request) {
 
     if (!apiKey) return NextResponse.json({ error: "API Key eksik!" }, { status: 500, headers: corsHeaders });
 
+    let contentToAnalyze = url;
+
+    // Eğer kullanıcı bir link gönderdiyse (Instagram vb.), içeriğini microlink üzerinden çekiyoruz
+    if (url.trim().startsWith('http://') || url.trim().startsWith('https://')) {
+      try {
+        const mlRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
+        const mlData = await mlRes.json();
+        if (mlData.status === 'success' && mlData.data) {
+          const title = mlData.data.title || '';
+          const desc = mlData.data.description || '';
+          contentToAnalyze = `Başlık: ${title}\nİçerik/Açıklama: ${desc}\nOrijinal URL: ${url}`;
+        }
+      } catch (err) {
+        console.error("Scraping error:", err);
+      }
+    }
+
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -47,7 +64,7 @@ TOKEN TASARRUFU: Hiçbir ön açıklama, selamlama veya kapanış cümlesi eklem
 SOSYAL MEDYA: Eğer girdi bir sosyal medya açıklamasıysa, emojileri temizle ve dağınık haldeki tarif bilgisini mantıklı bir sıraya koyarak normalize et.
 NULL GÜVENLİĞİ: Veri bulunamazsa String için "", Sayı için 0, Liste için [] döndür. Yanlış veri tipinden kaçın.`
           },
-          { role: "user", content: `Analiz et: ${url}` }
+          { role: "user", content: `Analiz et:\n${contentToAnalyze}` }
         ],
         response_format: { type: "json_object" }
       })
