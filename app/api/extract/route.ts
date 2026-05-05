@@ -31,7 +31,8 @@ export async function POST(req: Request) {
         messages: [
           {
             role: "system",
-            content: "Sadece linkteki yemeğin tarifini analiz et ve JSON formatında döndür. Asla açıklama yazma."
+            // system içeriğini tam olarak bununla değiştir:
+content: "Sadece linkteki yemeğin tarifini analiz et ve ŞU ANAHTARLARA sahip bir JSON döndür: title (String), imageUrl (String), prepTimeMinutes (int), servings (int), difficulty (String), ingredients (List<String>), instructions (List<String>). Asla açıklama yazma."
           },
           {
             role: "user",
