@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 export async function GET() {
-  return NextResponse.json({ mesaj: "API Başarıyla Çalışıyor! Sihir Başlasın! ✨" }, { headers: corsHeaders });
+  return NextResponse.json({ mesaj: "API Başarıyla Çalışıyor! ✨" }, { headers: corsHeaders });
 }
 
 export async function OPTIONS() {
@@ -20,58 +20,47 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { url } = body;
 
-    if (!url) {
-      return NextResponse.json({ error: 'URL eksik' }, { status: 400, headers: corsHeaders });
+    // HATA AYIKLAMA: Anahtarın ilk 3 harfini yazdırarak Vercel'in anahtarı görüp görmediğini kontrol ediyoruz
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    console.log("Sistem Kontrolü - API Key Başlangıcı:", apiKey.substring(0, 5) + "...");
+
+    if (!apiKey || apiKey.length < 10) {
+      return NextResponse.json({ error: 'API Anahtarı Vercel panelinde bulunamadı!' }, { status: 500, headers: corsHeaders });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const modelNames = ['gemini-1.5-flash', 'gemini-1.5-pro']; // En stabil modeller
     
-    const prompt = `Aşağıdaki web sitesindeki yemek tarifini analiz et ve ÇOK SIKI bir JSON formatında döndür. Asla JSON formatı dışına çıkma. 
-    Site URL: ${url}
-    
-    Beklenen JSON Formatı:
-    {
-      "title": "Tarifin Adı",
-      "imageUrl": "Yemeğin fotoğraf URL'si (bulamazsan boş bırak)",
-      "prepTimeMinutes": 30,
-      "servings": 4,
-      "difficulty": "Kolay",
-      "ingredients": [
-        {"name": "Un", "amount": 2, "unit": "su bardağı"}
-      ],
-      "instructions": [
-        "Unu ve sütü karıştırın."
-      ]
-    }`;
-
-    // AKILLI SİSTEM: Çalışan modeli bulana kadar güncel modelleri sırayla dener
-    const modelNames = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'];
     let text = '';
-    
+    let lastError = '';
+
     for (const modelName of modelNames) {
       try {
+        console.log(`${modelName} deneniyor...`);
         const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent(`Bu linkteki yemeğin malzemelerini JSON formatında çıkar: ${url}`);
         text = result.response.text();
-        console.log(`${modelName} modeli ile başarıyla tarif çekildi!`);
-        break; // Modeli bulup işlemi yaptıysa döngüden çık
+        console.log(`${modelName} BAŞARILI!`);
+        break;
       } catch (e: any) {
-        console.log(`${modelName} modeli reddedildi, diğerine geçiliyor...`);
+        // ASIL HATA BURADA YAZACAK:
+        lastError = e.message || "Bilinmeyen hata";
+        console.error(`${modelName} HATASI:`, lastError);
       }
     }
 
     if (!text) {
-       return NextResponse.json({ error: 'Hiçbir model bu API anahtarıyla çalışmadı.' }, { status: 500, headers: corsHeaders });
+       return NextResponse.json({ 
+         error: 'Yapay zeka modelleri yanıt vermedi.',
+         debug: lastError // Hatayı Flutter tarafına da gönderiyoruz
+       }, { status: 500, headers: corsHeaders });
     }
 
-    // Gelen metni temizleyip JSON'a çeviriyoruz
+    // JSON temizleme ve döndürme işlemi
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const recipeData = JSON.parse(text);
+    return NextResponse.json(JSON.parse(text), { headers: corsHeaders });
 
-    return NextResponse.json(recipeData, { headers: corsHeaders });
-
-  } catch (error) {
-    console.error('Genel API Hatası:', error);
-    return NextResponse.json({ error: 'Tarif çıkarılamadı veya hatalı link' }, { status: 500, headers: corsHeaders });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Sistem hatası: ' + error.message }, { status: 500, headers: corsHeaders });
   }
 }
