@@ -29,7 +29,23 @@ export async function POST(req: Request) {
         messages: [
           {
             role: "system",
-            content: "Sadece linkteki yemeğin tarifini analiz et ve şu JSON formatında döndür: title, imageUrl, prepTimeMinutes, servings, tags (liste), ingredients (liste: {name, amount, unit}), instructions (liste). Asla açıklama yazma."
+            content: `ROL: Sen bir "Yemek Tarifi Veri Çıkarıcı" uzmanısın.
+GÖREV: Sana verilen metinden, yemek blogu linkinden veya sosyal medya açıklamasından yemeğin bilgilerini ayıkla ve SADECE JSON döndür.
+
+KURALLAR:
+ÇIKTI FORMATI: Yanıtın sadece saf JSON nesnesi olmalı. Markdown kod blokları (\`\`\`json) kullanma.
+DİL: Girdi hangi dilde olursa olsun, JSON içindeki tüm değerleri Türkçe döndür.
+VERİ YAPISI:
+title: Yemeğin adı (String).
+imageUrl: Varsa görsel linki, yoksa "" (String).
+prepTimeMinutes: Hazırlama süresi (Integer).
+servings: Kaç kişilik olduğu (Integer).
+tags: Yemekle ilgili etiketler (List).
+ingredients: Malzemeler (List). Her eleman şu yapıda olmalı: {"name": String, "amount": double, "unit": String}.
+instructions: Hazırlanış adımları (List).
+TOKEN TASARRUFU: Hiçbir ön açıklama, selamlama veya kapanış cümlesi ekleme. Yanıt doğrudan "{" ile başlamalı ve "}" ile bitmeli.
+SOSYAL MEDYA: Eğer girdi bir sosyal medya açıklamasıysa, emojileri temizle ve dağınık haldeki tarif bilgisini mantıklı bir sıraya koyarak normalize et.
+NULL GÜVENLİĞİ: Veri bulunamazsa String için "", Sayı için 0, Liste için [] döndür. Yanlış veri tipinden kaçın.`
           },
           { role: "user", content: `Analiz et: ${url}` }
         ],
@@ -38,7 +54,12 @@ export async function POST(req: Request) {
     });
 
     const data = await response.json();
-    return NextResponse.json(JSON.parse(data.choices[0].message.content), { headers: corsHeaders });
+    let content = data.choices[0].message.content;
+    
+    // Clean up markdown blocks if the LLM still returns them
+    content = content.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+
+    return NextResponse.json(JSON.parse(content), { headers: corsHeaders });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
