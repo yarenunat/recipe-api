@@ -1,27 +1,67 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FCFAFA; /* Very soft warm white/cream */
+  --foreground: #5C5555; /* Warm grey for text, absolutely no black */
+  
+  --primary: #FFB5A7; /* Soft peach/pink */
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #FFFFFF; /* Pure white for cards */
+  --secondary-foreground: #5C5555;
+  
+  --accent: #FDF4F5; /* Very light pink background for subtle areas */
+  --accent-foreground: #FFB5A7;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Force light mode even if system is dark */
+    --background: #FCFAFA; 
+    --foreground: #5C5555;
+    
+    --primary: #FFB5A7;
+    --primary-foreground: #FFFFFF;
+    
+    --secondary: #FFFFFF;
+    --secondary-foreground: #5C5555;
+    
+    --accent: #FDF4F5;
+    --accent-foreground: #FFB5A7;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  /* font-family: Arial... yerine aşağıdakini kullanabilirsin */
   font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100vh;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+
+
+.premium-shadow {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
