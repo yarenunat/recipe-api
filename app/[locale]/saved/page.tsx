@@ -21,7 +21,7 @@ export default function SavedRecipesPage() {
     try {
       const res = await fetch(`/api/recipes/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setRecipes(prev => prev.filter(r => r.id !== id));
+        setRecipes(recipes.filter((r: any) => r.id !== id));
       } else {
         alert("Failed to delete recipe.");
       }

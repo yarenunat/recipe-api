@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 {
   "title": "Recipe name",
   "description": "Short appetizing description",
-  "imagePrompt": "A highly detailed English visual description of the FINISHED, PLATED dish for an AI image generator. Describe the exact shape, texture, colors, plating, and how it is cut/served. CRITICAL: Never describe raw ingredients or whole animals unless it's a whole roasted dish. If the recipe uses chopped, sliced, or diced meat (e.g. chicken saute, nuggets), EXPLICITLY state 'chopped chicken pieces', 'diced meat', or 'sliced'. For example, for chicken saute: 'Pan-fried diced chicken breast pieces with peppers in a rich sauce, perfectly plated'",
+  "imagePrompt": "A highly detailed English visual description of the FINISHED dish for an AI image generator. CRITICAL INSTRUCTIONS: 1. DO NOT rely on foreign food names alone (e.g. 'simit', 'milföy'). You MUST describe their exact physical geometry and texture in English. 2. If it has a hole (like simit/bagel), EXPLICITLY state 'ring-shaped with a clear empty hole in the middle'. 3. If it's puff pastry (milföy), EXPLICITLY state 'flaky, crispy, multi-layered golden baked puff pastry texture' and NOT soft dough. 4. Never describe raw ingredients. Describe exact shape, texture, crispiness, and plating. For example: 'Ring-shaped flaky crispy puff pastry with a hole in the middle, covered in roasted sesame seeds, perfectly plated'",
   "ingredients": [{ "name": "ingredient", "quantity": "amount" }],
   "instructions": ["Step 1...", "Step 2..."],
   "cookingTime": 20,
