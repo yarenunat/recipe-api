@@ -13,7 +13,11 @@ export async function GET() {
       where: { userId: session.user.id },
       include: {
         recipes: {
-          include: { recipe: true }
+          include: {
+            recipe: {
+              include: { images: { take: 1 } }
+            }
+          }
         }
       }
     });

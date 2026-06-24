@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Save, Plus, X, Upload, Image as ImageIcon, Check } from "lucide-react";
+import { ChevronLeft, Save, Plus, X, Upload, Image as ImageIcon, Check, ScanText, Sparkles } from "lucide-react";
 
 export default function NewRecipePage() {
   const router = useRouter();
@@ -13,6 +13,73 @@ export default function NewRecipePage() {
   const [instructions, setInstructions] = useState("");
   const [ingredients, setIngredients] = useState([{ name: "", quantity: "" }]);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+
+  const handleScan = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setScanning(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new window.Image();
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          
+          const MAX_DIM = 1024;
+          if (width > height) {
+            if (width > MAX_DIM) {
+              height *= MAX_DIM / width;
+              width = MAX_DIM;
+            }
+          } else {
+            if (height > MAX_DIM) {
+              width *= MAX_DIM / height;
+              height = MAX_DIM;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const compressedB64 = canvas.toDataURL("image/jpeg", 0.7);
+
+          try {
+            const res = await fetch("/api/recipes/scan", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageBase64: compressedB64 })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.title) setTitle(data.title);
+              if (data.description) setDescription(data.description);
+              if (data.instructions) setInstructions(data.instructions);
+              if (data.ingredients && Array.isArray(data.ingredients)) {
+                setIngredients(data.ingredients.map((i: any) => ({
+                  name: i.name || "",
+                  quantity: i.quantity || ""
+                })));
+              }
+            } else {
+              const err = await res.text();
+              console.error(err);
+              alert("Görsel taranamadı. Lütfen daha net bir fotoğraf yükleyin.");
+            }
+          } catch (error) {
+            console.error(error);
+            alert("Tarama sırasında bir hata oluştu.");
+          }
+          setScanning(false);
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,6 +169,34 @@ export default function NewRecipePage() {
 
       <main className="p-6 max-w-2xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-8">
+          
+          {/* AI Scanner Banner */}
+          <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-[2rem] p-8 text-white shadow-lg relative overflow-hidden">
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-4 border border-white/30 shadow-sm">
+                {scanning ? <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <ScanText size={32} />}
+              </div>
+              <h2 className="text-xl font-black mb-2 flex items-center gap-2"><Sparkles size={20} className="text-yellow-300" /> Sihirli Tarama</h2>
+              <p className="text-sm font-medium text-white/90 mb-6 max-w-sm">El yazısı tarifinizin veya kitap sayfasının fotoğrafını çekin, yapay zeka sizin için okuyup tüm formu otomatik doldursun!</p>
+              
+              <div className="relative">
+                <button type="button" disabled={scanning} className="bg-white text-purple-600 px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-80 disabled:pointer-events-none">
+                  {scanning ? "Okunuyor..." : "Fotoğraf Seç / Çek"}
+                </button>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleScan}
+                  disabled={scanning}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:pointer-events-none"
+                />
+              </div>
+            </div>
+            
+            {/* Background elements */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+          </div>
           
           {/* Image Upload */}
           <div className="bg-white rounded-[2rem] p-2 shadow-sm border border-slate-100">

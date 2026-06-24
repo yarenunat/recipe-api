@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Activity, Apple, Scale, BookOpen, BrainCircuit, HeartPulse, 
-  ChevronLeft, Plus, Minus, Wand2, ArrowRight, TrendingUp, Sparkles 
+  ChevronLeft, ChevronDown, Plus, Minus, Wand2, ArrowRight, TrendingUp, Sparkles 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,6 +22,7 @@ export default function HealthDashboard() {
   const [foodName, setFoodName] = useState("");
   const [calories, setCalories] = useState("");
   const [mealType, setMealType] = useState("Lunch");
+  const [isMealTypeDropdownOpen, setIsMealTypeDropdownOpen] = useState(false);
   
   // AI Report
   const [aiReport, setAiReport] = useState("");
@@ -223,20 +224,36 @@ export default function HealthDashboard() {
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="font-bold text-slate-700 text-lg">Log Food</h3>
-                  <div className="relative">
-                    <select 
-                      value={mealType} 
-                      onChange={e => setMealType(e.target.value)} 
-                      className="appearance-none bg-slate-50 text-sm border border-slate-100 rounded-full px-4 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 transition-all font-bold text-[var(--primary)] cursor-pointer pr-8"
+                  <div className="relative z-20">
+                    <div 
+                      onClick={() => setIsMealTypeDropdownOpen(!isMealTypeDropdownOpen)}
+                      className="bg-slate-50 text-sm border border-slate-100 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer font-bold text-[var(--primary)] hover:bg-slate-100 transition-colors shadow-sm select-none"
                     >
-                      <option>Breakfast</option>
-                      <option>Lunch</option>
-                      <option>Dinner</option>
-                      <option>Snack</option>
-                    </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--primary)]">
-                      <ChevronLeft size={14} className="-rotate-90" />
+                      <span>{mealType}</span>
+                      <ChevronDown size={14} className={`transition-transform duration-300 ${isMealTypeDropdownOpen ? 'rotate-180' : ''}`} />
                     </div>
+                    
+                    <AnimatePresence>
+                      {isMealTypeDropdownOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                          animate={{ opacity: 1, y: 0, scale: 1 }} 
+                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 top-[calc(100%+8px)] bg-white border border-slate-100 rounded-2xl shadow-xl py-2 min-w-[120px] z-30"
+                        >
+                          {["Breakfast", "Lunch", "Dinner", "Snack"].map(type => (
+                            <div 
+                              key={type} 
+                              onClick={() => { setMealType(type); setIsMealTypeDropdownOpen(false); }}
+                              className={`px-4 py-2.5 cursor-pointer hover:bg-slate-50 font-bold text-sm transition-colors ${mealType === type ? 'text-[var(--primary)] bg-[var(--primary)]/5' : 'text-slate-600'}`}
+                            >
+                              {type}
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
                 

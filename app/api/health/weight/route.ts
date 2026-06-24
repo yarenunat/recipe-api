@@ -41,15 +41,8 @@ export async function POST(req: Request) {
     const logDate = new Date(date);
     logDate.setUTCHours(0, 0, 0, 0); // Normalize to midnight UTC for @db.Date matching
 
-    const log = await prisma.weightLog.upsert({
-      where: {
-        userId_date: {
-          userId: session.user.id,
-          date: logDate,
-        }
-      },
-      update: { weight: parseFloat(weight) },
-      create: {
+    const log = await prisma.weightLog.create({
+      data: {
         userId: session.user.id,
         weight: parseFloat(weight),
         date: logDate,

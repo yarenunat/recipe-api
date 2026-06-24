@@ -254,7 +254,7 @@ export default function MealPlannerPage() {
               initial={{ opacity: 0, y: 100, scale: 0.95 }} 
               animate={{ opacity: 1, y: 0, scale: 1 }} 
               exit={{ opacity: 0, y: 100, scale: 0.95 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] p-6 pb-12 z-[120] shadow-2xl border-t border-slate-100 max-h-[85vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] p-6 pb-32 z-[120] shadow-2xl border-t border-slate-100 max-h-[85vh] overflow-y-auto"
             >
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
               
@@ -280,7 +280,7 @@ export default function MealPlannerPage() {
                         type="button"
                         onClick={() => setMealType(type)}
                         className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all border ${
-                          mealType === type ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
+                          mealType === type ? "bg-[var(--primary)]/10 border-[var(--primary)]/30 text-[var(--primary)]" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
                         }`}
                       >
                         {type}
@@ -297,7 +297,7 @@ export default function MealPlannerPage() {
                       type="button"
                       onClick={() => setInputType("custom")}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
-                        inputType === "custom" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500"
+                        inputType === "custom" ? "bg-white shadow-sm text-[var(--primary)]" : "text-slate-500"
                       }`}
                     >
                       <Utensils size={16} /> Custom Meal
@@ -306,7 +306,7 @@ export default function MealPlannerPage() {
                       type="button"
                       onClick={() => setInputType("recipe")}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
-                        inputType === "recipe" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500"
+                        inputType === "recipe" ? "bg-white shadow-sm text-[var(--primary)]" : "text-slate-500"
                       }`}
                     >
                       <BookHeart size={16} /> Saved Recipe
@@ -319,7 +319,7 @@ export default function MealPlannerPage() {
                       placeholder="e.g. Avocado Toast with Egg" 
                       value={customText}
                       onChange={e => setCustomText(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-transparent transition-all font-medium text-slate-700"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-transparent transition-all font-medium text-slate-700"
                       required
                     />
                   ) : (

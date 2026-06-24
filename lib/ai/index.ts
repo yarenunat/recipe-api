@@ -19,7 +19,7 @@ export function getModel(provider: AIProvider | "vision" = "groq"): LanguageMode
     case "claude":
       return anthropic("claude-3-5-sonnet-20240620");
     case "vision":
-      return groqCustom("llama-3.2-90b-vision-preview", { structuredOutputs: false });
+      return groqCustom("qwen/qwen3.6-27b", { structuredOutputs: false });
     case "groq":
       return groqCustom("llama-3.3-70b-versatile", { structuredOutputs: false });
     default:

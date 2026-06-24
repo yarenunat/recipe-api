@@ -16,7 +16,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       include: {
         recipes: {
           include: {
-            recipe: true
+            recipe: {
+              include: { images: { take: 1 } }
+            }
           }
         }
       }

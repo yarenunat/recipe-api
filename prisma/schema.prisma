@@ -281,7 +281,6 @@ model WeightLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, date])
   @@map("weight_logs")
 }
 

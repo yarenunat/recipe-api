@@ -258,7 +258,7 @@ export default function SavedRecipesPage() {
                     </div>
 
                     {collections.map(collection => (
-                      <Link href={`/saved/collection/${collection.id}`} key={collection.id}>
+                      <Link href={`/saved/collection/${collection.id}`} key={collection.id} className="block">
                         <div className="bg-white rounded-3xl h-48 p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer flex flex-col relative group overflow-hidden">
                           {/* Folder Preview Background */}
                           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
@@ -267,7 +267,7 @@ export default function SavedRecipesPage() {
                           
                           <div className="flex-1">
                             <h3 className="font-bold text-slate-700 leading-tight line-clamp-2">{collection.name}</h3>
-                            <p className="text-xs text-slate-400 mt-1">{collection._count?.recipes || 0} recipes</p>
+                            <p className="text-xs text-slate-400 mt-1">{collection.recipes?.length || 0} recipes</p>
                           </div>
 
                           {/* Preview mini-images */}
@@ -282,9 +282,9 @@ export default function SavedRecipesPage() {
                                   />
                                 </div>
                               ))}
-                              {collection._count?.recipes > 3 && (
+                              {collection.recipes?.length > 3 && (
                                 <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 relative z-0">
-                                  +{collection._count.recipes - 3}
+                                  +{collection.recipes.length - 3}
                                 </div>
                               )}
                             </div>
@@ -309,13 +309,13 @@ export default function SavedRecipesPage() {
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90]"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110]"
             />
             <motion.div 
               initial={{ opacity: 0, y: 100, scale: 0.95 }} 
               animate={{ opacity: 1, y: 0, scale: 1 }} 
               exit={{ opacity: 0, y: 100, scale: 0.95 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] p-6 pb-12 z-[100] shadow-2xl border-t border-slate-100"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] p-6 pb-12 z-[120] shadow-2xl border-t border-slate-100"
             >
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
               
