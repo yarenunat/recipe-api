@@ -3,16 +3,22 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { getModel } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import * as cheerio from "cheerio";
+import { analyzeFoodVisuals, buildImageUrl } from "@/lib/food-visual-analyzer";
+
+/* ─── Schema ─────────────────────────────────────────────── */
 
 export const recipeSchema = z.object({
   title: z.string(),
   description: z.string(),
   imagePrompt: z.string().optional(),
-  ingredients: z.array(z.object({
-    name: z.string(),
-    quantity: z.string(),
-  })),
+  ingredients: z.array(
+    z.object({
+      name: z.string(),
+      quantity: z.string(),
+    })
+  ),
   instructions: z.array(z.string()),
   cookingTime: z.number().optional(),
   prepTime: z.number().optional(),
@@ -26,47 +32,116 @@ export const recipeSchema = z.object({
   tips: z.array(z.string()).optional(),
 });
 
+/* ─── POST /api/recipes/generate ─────────────────────────── */
+
 export async function POST(req: Request) {
   try {
+    const session = await auth();
     const { prompt, provider = "groq" } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
+    /* ── Step 1: Resolve prompt (URL / social media / plain text) ── */
+
     let llmInput = prompt;
-    let imageUrl = null;
+    let sourceImageUrl: string | null = null;
 
-    // If the prompt is a URL, fetch the actual content first
-    if (prompt.trim().startsWith("http://") || prompt.trim().startsWith("https://")) {
+    const trimmedUrl = prompt.trim();
+    const isUrl =
+      trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://");
+
+    const socialMediaDomains = [
+      "instagram.com",
+      "tiktok.com",
+      "twitter.com",
+      "x.com",
+      "facebook.com",
+    ];
+
+    let isSocialMedia = false;
+    if (isUrl) {
       try {
-        const response = await fetch(prompt.trim());
-        const html = await response.text();
-        const $ = cheerio.load(html);
-        
-        imageUrl = $('meta[property="og:image"]').attr('content') || 
-                   $('meta[name="twitter:image"]').attr('content') || 
-                   $('img').first().attr('src');
-                   
-        if (imageUrl && !imageUrl.startsWith('http')) {
-           const urlObj = new URL(prompt.trim());
-           imageUrl = new URL(imageUrl, urlObj.origin).href;
-        }
+        const urlObj = new URL(trimmedUrl);
+        isSocialMedia = socialMediaDomains.some(
+          (d) => urlObj.hostname === d || urlObj.hostname.endsWith(`.${d}`)
+        );
+      } catch {}
+    }
 
-        $('script, style, noscript, iframe, img, svg').remove();
-        const textContent = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 5000);
-        llmInput = `Extract a detailed recipe from the following website content. Website Content: ${textContent}`;
-      } catch (err) {
-        console.error("Failed to fetch URL content, falling back to raw prompt", err);
+    if (isUrl) {
+      // Social media: use bot User-Agents that receive OG tags (including captions)
+      const userAgents = isSocialMedia
+        ? [
+            "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+            "Googlebot/2.1 (+http://www.google.com/bot.html)",
+            "Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+          ]
+        : ["Mozilla/5.0 (compatible; RecipeBot/1.0)"];
+
+      let scraped = false;
+
+      for (const ua of userAgents) {
+        try {
+          const response = await fetch(trimmedUrl, {
+            headers: { "User-Agent": ua },
+          });
+          const html = await response.text();
+          const $ = cheerio.load(html);
+
+          const ogImage =
+            $('meta[property="og:image"]').attr("content") ||
+            $('meta[name="twitter:image"]').attr("content");
+
+          if (ogImage) {
+            sourceImageUrl = ogImage.startsWith("http")
+              ? ogImage
+              : new URL(ogImage, new URL(trimmedUrl).origin).href;
+          }
+
+          const ogDescription =
+            $('meta[property="og:description"]').attr("content") || "";
+          const ogTitle = $('meta[property="og:title"]').attr("content") || "";
+
+          let textContent = "";
+          if (isSocialMedia) {
+            textContent = [ogTitle, ogDescription].filter(Boolean).join("\n").trim();
+          } else {
+            $("script, style, noscript, iframe, img, svg").remove();
+            textContent = $("body").text().replace(/\s+/g, " ").trim().slice(0, 5000);
+          }
+
+          if (textContent.length > 50) {
+            llmInput = `Generate a detailed recipe based on the following content from a social media post or website. Extract ingredients and steps if explicitly mentioned, otherwise create an authentic recipe for the dish described.\n\nContent: ${textContent}`;
+            scraped = true;
+            break;
+          }
+        } catch (err) {
+          console.error(`Fetch failed with User-Agent ${ua}:`, err);
+        }
+      }
+
+      if (!scraped) {
+        try {
+          const urlObj = new URL(trimmedUrl);
+          const pathParts = urlObj.pathname.split("/").filter(Boolean);
+          const username = pathParts[0]?.replace("@", "");
+          llmInput = `Generate a popular, authentic, delicious recipe that would be shared by the food account "@${username}". If the username contains Turkish food words, generate a traditional Turkish recipe. Make it complete with proper quantities and detailed steps.`;
+        } catch {
+          llmInput = prompt;
+        }
       }
     }
+
+    /* ── Step 2: Generate structured recipe JSON ── */
 
     const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
 {
   "title": "Recipe name",
   "description": "Short appetizing description",
-  "imagePrompt": "A highly detailed English visual description of the FINISHED dish for an AI image generator. CRITICAL INSTRUCTIONS: 1. DO NOT rely on foreign food names alone (e.g. 'simit', 'milföy'). You MUST describe their exact physical geometry and texture in English. 2. If it has a hole (like simit/bagel), EXPLICITLY state 'ring-shaped with a clear empty hole in the middle'. 3. If it's puff pastry (milföy), EXPLICITLY state 'flaky, crispy, multi-layered golden baked puff pastry texture' and NOT soft dough. 4. Never describe raw ingredients. Describe exact shape, texture, crispiness, and plating. For example: 'Ring-shaped flaky crispy puff pastry with a hole in the middle, covered in roasted sesame seeds, perfectly plated'",
-  "ingredients": [{ "name": "ingredient", "quantity": "amount" }],
+  "imagePrompt": "Brief one-sentence visual description of the finished dish",
+  "ingredients": [{ "name": "ingredient", "quantity": "amount with unit" }],
   "instructions": ["Step 1...", "Step 2..."],
   "cookingTime": 20,
   "prepTime": 10,
@@ -74,53 +149,86 @@ export async function POST(req: Request) {
   "servings": 4,
   "calories": 400,
   "difficultyLevel": "Easy",
-  "cuisineType": "Italian",
+  "cuisineType": "Turkish",
   "temperature": "180°C",
   "tips": ["Tip 1", "Tip 2"]
 }`;
 
-    let messages: any = [];
-    if (imageUrl) {
+    let messages: any[] = [];
+    if (sourceImageUrl) {
       messages = [
         {
-          role: 'user',
+          role: "user",
           content: [
-            { type: 'text', text: `Generate a detailed recipe based on the following input: "${llmInput}". Use the provided image to accurately describe the visual styling and presentation of the dish in the 'imagePrompt' field.\n\n${systemInstruction}` },
-            { type: 'image', image: new URL(imageUrl) }
-          ]
-        }
+            {
+              type: "text",
+              text: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`,
+            },
+            { type: "image", image: new URL(sourceImageUrl) },
+          ],
+        },
       ];
     } else {
       messages = [
         {
-          role: 'user',
-          content: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`
-        }
+          role: "user",
+          content: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`,
+        },
       ];
     }
 
     let text = "";
     try {
       const result = await generateText({
-        model: getModel(imageUrl ? "vision" : provider),
+        model: getModel(sourceImageUrl ? "vision" : provider),
         messages,
       });
       text = result.text;
     } catch (err) {
-      console.error("Vision or Generation failed, falling back to text-only:", err);
+      console.error("Vision generation failed, falling back to text-only:", err);
       const fallbackResult = await generateText({
         model: getModel(provider),
-        prompt: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`
+        prompt: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`,
       });
       text = fallbackResult.text;
     }
 
-    const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+    const cleaned = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
     const parsed = recipeSchema.parse(JSON.parse(cleaned));
 
-    // Save permanently to the database
+    /* ── Step 3: Food Visual Analyzer ── */
+    // Analyze the FULL recipe (not just title) to build a precise image prompt
+
+    const visualAnalysis = await analyzeFoodVisuals(
+      {
+        title: parsed.title,
+        description: parsed.description,
+        ingredients: parsed.ingredients,
+        instructions: parsed.instructions,
+        cuisineType: parsed.cuisineType,
+        temperature: parsed.temperature,
+        cookingTime: parsed.cookingTime,
+        prepTime: parsed.prepTime,
+      },
+      provider
+    );
+
+    console.log(
+      `[Visual Analyzer] confidence=${visualAnalysis.visualConfidenceScore} dish="${visualAnalysis.dish_name}"`
+    );
+
+    const imageUrl = buildImageUrl(visualAnalysis);
+
+    /* ── Step 4: Persist to database ── */
+
     const savedRecipe = await prisma.recipe.create({
       data: {
+        userId: session?.user?.id || null,
         title: parsed.title,
         description: parsed.description,
         instructions: JSON.stringify(parsed.instructions),
@@ -134,29 +242,33 @@ export async function POST(req: Request) {
         temperature: parsed.temperature,
         tips: parsed.tips ? JSON.stringify(parsed.tips) : null,
         ingredients: {
-          create: parsed.ingredients.map(ing => ({
+          create: parsed.ingredients.map((ing) => ({
             quantity: ing.quantity,
             ingredient: {
               connectOrCreate: {
                 where: { name: ing.name.toLowerCase().trim() },
-                create: { name: ing.name.toLowerCase().trim() }
-              }
-            }
-          }))
+                create: { name: ing.name.toLowerCase().trim() },
+              },
+            },
+          })),
         },
         images: {
-          create: [{
-            url: `https://image.pollinations.ai/prompt/${encodeURIComponent("professional cinematic food photography. " + (parsed.imagePrompt || parsed.title) + ", 4k resolution, highly detailed, realistic, appetizing, culinary magazine style, perfectly plated, natural lighting")}?width=800&height=800&nologo=true`,
-            prompt: parsed.imagePrompt || parsed.title
-          }]
-        }
-      }
+          create: [
+            {
+              url: imageUrl,
+              prompt: visualAnalysis.food_photography_prompt,
+            },
+          ],
+        },
+      },
     });
 
     return NextResponse.json(savedRecipe);
   } catch (error) {
     console.error("Recipe generation error:", error);
-    return NextResponse.json({ error: "Failed to generate recipe" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate recipe" },
+      { status: 500 }
+    );
   }
 }
-

@@ -41,10 +41,17 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
+  password      String?
   emailVerified DateTime? @map("email_verified")
   image         String?
   accounts      Account[]
   sessions      Session[]
+
+  // Health & Tracking Info
+  dailyCalorieGoal Int?
+  height           Float? // in cm
+  currentWeight    Float? // in kg
+  targetWeight     Float? // in kg
 
   recipes       Recipe[]
   collections   Collection[]
@@ -52,6 +59,8 @@ model User {
   mealPlans     MealPlan[]
   favorites     Favorite[]
   aiHistories   AIHistory[]
+  weightLogs    WeightLog[]
+  calorieLogs   CalorieLog[]
 
   @@map("users")
 }
@@ -88,6 +97,7 @@ model Recipe {
   tips            String? @db.Text
   sourceUrl       String?
   originalCaption String? @db.Text
+  isCustom        Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -213,12 +223,13 @@ model MealPlan {
 model MealPlanItem {
   id         String   @id @default(cuid())
   mealPlanId String
-  recipeId   String
+  recipeId   String?
+  customText String?
   date       DateTime @db.Date
   mealType   String // e.g., Breakfast, Lunch, Dinner
 
   mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe   Recipe?  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@map("meal_plan_items")
 }
@@ -259,4 +270,31 @@ model GeneratedIcon {
   ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
   @@map("generated_icons")
+}
+
+model WeightLog {
+  id        String   @id @default(cuid())
+  userId    String
+  weight    Float
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("weight_logs")
+}
+
+model CalorieLog {
+  id        String   @id @default(cuid())
+  userId    String
+  calories  Int
+  foodName  String
+  mealType  String   // e.g., Breakfast, Lunch, Dinner, Snack
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("calorie_logs")
 }

@@ -3,13 +3,18 @@ import { notFound } from "next/navigation";
 import { ChefHat, Clock, Flame, Utensils, ChevronLeft, MoreVertical, Sparkles } from "lucide-react";
 import Link from "next/link";
 import DeleteRecipeButton from "@/components/DeleteRecipeButton";
+import ClientShoppingButton from "./ClientShoppingButton";
+import ClientCookingMode from "./ClientCookingMode";
 
 export default async function RecipePage({ params }: { params: { id: string } }) {
   const { id } = await params;
   
   const recipe = await prisma.recipe.findUnique({
     where: { id },
-    include: { ingredients: { include: { ingredient: true } } }
+    include: {
+      images: true,
+      ingredients: { include: { ingredient: true } },
+    },
   });
 
   if (!recipe) {
@@ -105,7 +110,10 @@ export default async function RecipePage({ params }: { params: { id: string } })
                   <Sparkles size={20} className="text-[var(--primary)]" />
                   Ingredients
                 </h3>
-                <span className="text-sm text-slate-400 font-medium">{recipe.ingredients.length} items</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-slate-400 font-medium">{recipe.ingredients.length} items</span>
+                  <ClientShoppingButton ingredients={recipe.ingredients} />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -124,7 +132,9 @@ export default async function RecipePage({ params }: { params: { id: string } })
 
             {/* Right Column: Instructions */}
             <div className="md:col-span-7 mt-8 md:mt-0">
-              <h3 className="text-xl font-semibold flex items-center gap-2 mb-6 text-slate-600">
+              <ClientCookingMode instructions={instructions} />
+              
+              <h3 className="text-xl font-semibold flex items-center gap-2 mb-6 text-slate-600 mt-2">
                 <ChefHat size={20} className="text-[var(--primary)]" />
                 Instructions
               </h3>
