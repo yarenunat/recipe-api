@@ -3,23 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Clock, Flame, ChefHat, Search, Bookmark, Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { useAppStore } from "@/store/useAppStore";
 
 export default function SavedRecipesPage() {
-  const [recipes, setRecipes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { recipes, isRecipesLoaded, fetchRecipes, setRecipes } = useAppStore();
 
   useEffect(() => {
-    fetch("/api/recipes")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setRecipes(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch recipes", err);
-        setLoading(false);
-      });
-  }, []);
+    if (!isRecipesLoaded) {
+      fetchRecipes();
+    }
+  }, [isRecipesLoaded, fetchRecipes]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault(); // Prevent navigating to the recipe detail page
@@ -52,8 +45,12 @@ export default function SavedRecipesPage() {
             Here are all the delicious recipes you've generated so far.
           </p>
 
-          {loading ? (
-            <div className="text-center py-10 text-slate-400">Loading recipes...</div>
+          {!isRecipesLoaded ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="bg-slate-200 rounded-[2rem] h-72 animate-pulse border border-slate-100"></div>
+              ))}
+            </div>
           ) : recipes.length === 0 ? (
             <div className="bg-white rounded-[2rem] p-8 text-center border border-slate-100 shadow-sm mt-8">
               <ChefHat size={48} className="mx-auto text-slate-300 mb-4" />

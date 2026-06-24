@@ -6,18 +6,19 @@ import { ChefHat, Sparkles, Plus, Calendar, Bookmark, Search, Home as HomeIcon, 
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAppStore } from "@/store/useAppStore";
 
 export default function Home() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [recipes, setRecipes] = useState<any[]>([]);
+  const { recipes, isRecipesLoaded, fetchRecipes } = useAppStore();
 
   useEffect(() => {
-    fetch("/api/recipes").then(res => res.json()).then(data => {
-      if (Array.isArray(data)) setRecipes(data);
-    }).catch(err => console.error("Failed to fetch recipes", err));
-  }, []);
+    if (!isRecipesLoaded) {
+      fetchRecipes();
+    }
+  }, [isRecipesLoaded, fetchRecipes]);
 
   const handleGenerate = async () => {
     if (!prompt) return;
@@ -104,7 +105,9 @@ export default function Home() {
               </motion.div>
 
               {/* Main Banner */}
-              {recipes.length > 0 ? (
+              {!isRecipesLoaded ? (
+                <div className="relative w-full h-72 rounded-[2rem] overflow-hidden shadow-sm flex flex-col justify-end p-8 order-1 md:order-2 border border-slate-100 bg-slate-200 animate-pulse"></div>
+              ) : recipes.length > 0 ? (
                 <Link href={`/recipe/${recipes[0].id}`}>
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -193,7 +196,13 @@ export default function Home() {
                 </Link>
               </div>
               
-              {recipes.length > 1 ? (
+              {!isRecipesLoaded ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="rounded-[1.5rem] h-48 bg-slate-200 animate-pulse"></div>
+                  ))}
+                </div>
+              ) : recipes.length > 1 ? (
                 <div className="grid grid-cols-2 gap-4">
                   {recipes.slice(1, 5).map((recipe, i) => (
                     <Link href={`/recipe/${recipe.id}`} key={recipe.id}>

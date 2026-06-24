@@ -10,7 +10,7 @@ const groqCustom = createOpenAI({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-export function getModel(provider: AIProvider = "groq"): LanguageModel {
+export function getModel(provider: AIProvider | "vision" = "groq"): LanguageModel {
   switch (provider) {
     case "openai":
       return openai("gpt-4o");
@@ -18,6 +18,8 @@ export function getModel(provider: AIProvider = "groq"): LanguageModel {
       return google("models/gemini-1.5-pro-latest");
     case "claude":
       return anthropic("claude-3-5-sonnet-20240620");
+    case "vision":
+      return groqCustom("llama-3.2-90b-vision-preview", { structuredOutputs: false });
     case "groq":
       return groqCustom("llama-3.3-70b-versatile", { structuredOutputs: false });
     default:
