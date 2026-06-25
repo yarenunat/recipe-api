@@ -5,12 +5,14 @@ import { motion } from "framer-motion";
 import { ShoppingCart, CheckCircle2, Circle, Trash2, Plus, Sparkles, Loader2, ChevronLeft } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function ShoppingPage() {
   const [lists, setLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newItemName, setNewItemName] = useState<Record<string, string>>({});
   const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
+  const [deleteListConfirm, setDeleteListConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLists();
@@ -85,8 +87,6 @@ export default function ShoppingPage() {
   };
 
   const deleteList = async (listId: string) => {
-    if (!confirm("Are you sure you want to delete this shopping list?")) return;
-    
     setLists(prev => prev.filter(l => l.id !== listId));
     try {
       await fetch(`/api/shopping/${listId}`, { method: "DELETE" });
@@ -169,7 +169,8 @@ export default function ShoppingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32 font-sans">
+    <>
+      <div className="min-h-screen bg-slate-50 pb-32 font-sans">
       <header className="pt-14 pb-6 px-6 bg-white rounded-b-[3rem] shadow-sm border-b border-slate-100 relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-[var(--primary)] rounded-full mix-blend-multiply filter blur-3xl opacity-10 pointer-events-none"></div>
         
@@ -210,7 +211,7 @@ export default function ShoppingPage() {
                   <Sparkles size={18} className="text-[var(--primary)]" />
                   {list.name}
                 </h2>
-                <button onClick={() => deleteList(list.id)} className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-400 hover:bg-rose-100 hover:text-rose-500 transition-colors">
+                <button onClick={() => setDeleteListConfirm(list.id)} className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-400 hover:bg-rose-100 hover:text-rose-500 transition-colors">
                   <Trash2 size={18} />
                 </button>
               </div>
@@ -259,5 +260,17 @@ export default function ShoppingPage() {
         )}
       </main>
     </div>
+
+      <ConfirmDialog
+        open={!!deleteListConfirm}
+        title="Listeyi Sil"
+        message="Bu alışveriş listesini kalıcı olarak silmek istediğinize emin misiniz?"
+        confirmLabel="Evet, Sil"
+        cancelLabel="Vazgeç"
+        variant="danger"
+        onConfirm={() => { const id = deleteListConfirm!; setDeleteListConfirm(null); deleteList(id); }}
+        onCancel={() => setDeleteListConfirm(null)}
+      />
+    </>
   );
 }

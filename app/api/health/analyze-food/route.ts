@@ -27,7 +27,7 @@ Example for "Menemen": [{"name": "Eggs", "quantity": 2, "unit": "pcs"}, {"name":
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
       }),
@@ -46,7 +46,7 @@ Example for "Menemen": [{"name": "Eggs", "quantity": 2, "unit": "pcs"}, {"name":
       parsed = JSON.parse(content);
     } catch (parseError) {
       // Extract array using regex if conversational text exists
-      const match = content.match(/\[.*\]/s);
+      const match = content.match(/\[[\s\S]*\]/);
       if (match) {
         parsed = JSON.parse(match[0]);
       } else {

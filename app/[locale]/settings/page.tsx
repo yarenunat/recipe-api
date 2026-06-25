@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, SessionProvider } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -56,6 +56,7 @@ function SettingsContent() {
     setError("");
     setSuccess("");
 
+    // Use generated avatar from color + name
     const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=${selectedColor}&color=fff&size=200`;
 
     try {
@@ -178,26 +179,29 @@ function SettingsContent() {
               {/* Avatar Selector */}
               <div className="flex flex-col items-center gap-4 mb-8">
                 <div className="relative">
-                  <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden relative group">
-                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=${selectedColor}&color=fff&size=200`} alt="Avatar Preview" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center border border-slate-100 text-[var(--primary)]">
-                    <Camera size={18} />
+                  <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden relative">
+                    <img 
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=${selectedColor}&color=fff&size=200`} 
+                      alt="Avatar Preview" 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                 </div>
                 
-                <div className="flex gap-2 mt-2">
-                  {AVATAR_COLORS.map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setSelectedColor(color)}
-                      className={`w-8 h-8 rounded-full shadow-inner transition-transform ${selectedColor === color ? 'scale-125 ring-2 ring-offset-2 ring-slate-300' : 'hover:scale-110'}`}
-                      style={{ backgroundColor: `#${color}` }}
-                    />
-                  ))}
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Profil Rengi Seç</p>
+                  <div className="flex gap-2">
+                    {AVATAR_COLORS.map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        className={`w-8 h-8 rounded-full shadow-inner transition-transform ${selectedColor === color ? 'scale-125 ring-2 ring-offset-2 ring-slate-300' : 'hover:scale-110'}`}
+                        style={{ backgroundColor: `#${color}` }}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs text-slate-400 font-medium mt-1">Favori profil rengini seç</p>
               </div>
 
               <div className="space-y-4">

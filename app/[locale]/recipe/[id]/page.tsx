@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { ChefHat, Clock, Flame, Utensils, ChevronLeft, MoreVertical, Sparkles } from "lucide-react";
+import { ChefHat, Clock, Flame, Utensils, ChevronLeft, Sparkles } from "lucide-react";
 import Link from "next/link";
-import DeleteRecipeButton from "@/components/DeleteRecipeButton";
+import RecipeOptionsMenu from "@/components/RecipeOptionsMenu";
 import ClientShoppingButton from "./ClientShoppingButton";
 import ClientCookingMode from "./ClientCookingMode";
+import AddToCollectionButton from "@/components/AddToCollectionButton";
+
+export const revalidate = 60;
 
 export default async function RecipePage({ params }: { params: { id: string } }) {
   const { id } = await params;
@@ -44,17 +47,15 @@ export default async function RecipePage({ params }: { params: { id: string } })
           />
           
           {/* Top Navbar */}
-          <div className="absolute top-12 left-6 right-6 flex justify-between items-center z-20">
+          <div className="absolute top-12 left-6 right-6 flex justify-between items-center z-50">
             <Link href="/">
               <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-sm hover:bg-white transition-colors text-slate-700 border border-slate-100">
                 <ChevronLeft size={24} />
               </div>
             </Link>
-            <div className="flex gap-2">
-              <DeleteRecipeButton id={recipe.id} />
-              <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-sm hover:bg-white transition-colors text-slate-700 border border-slate-100">
-                <MoreVertical size={24} />
-              </div>
+            <div className="flex gap-2 items-center">
+              <AddToCollectionButton recipeId={recipe.id} />
+              <RecipeOptionsMenu recipe={recipe} />
             </div>
           </div>
 
@@ -105,15 +106,17 @@ export default async function RecipePage({ params }: { params: { id: string } })
             
             {/* Left Column: Ingredients */}
             <div className="md:col-span-5">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold flex items-center gap-2 text-slate-600">
-                  <Sparkles size={20} className="text-[var(--primary)]" />
-                  Ingredients
-                </h3>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-slate-400 font-medium">{recipe.ingredients.length} items</span>
-                  <ClientShoppingButton ingredients={recipe.ingredients} />
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-xl font-semibold flex items-center gap-2 text-slate-600">
+                    <Sparkles size={20} className="text-[var(--primary)]" />
+                    Malzemeler
+                  </h3>
+                  <span className="text-xs font-bold text-white bg-[var(--primary)] px-2.5 py-1 rounded-full">
+                    {recipe.ingredients.length}
+                  </span>
                 </div>
+                <ClientShoppingButton ingredients={recipe.ingredients} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

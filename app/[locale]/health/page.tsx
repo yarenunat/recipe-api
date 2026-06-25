@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Activity, Apple, Scale, BookOpen, BrainCircuit, HeartPulse, 
-  ChevronLeft, ChevronDown, Plus, Minus, Wand2, ArrowRight, TrendingUp, Sparkles 
+  ChevronLeft, ChevronDown, Plus, Minus, Wand2, ArrowRight, TrendingUp, Sparkles, Loader2, Calendar 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function HealthDashboard() {
   const [activeTab, setActiveTab] = useState("calories");
@@ -30,6 +31,15 @@ export default function HealthDashboard() {
 
   const [analyzingFood, setAnalyzingFood] = useState(false);
 
+  const getTodayDateString = () => {
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+    return localToday.toISOString().split('T')[0];
+  };
+
+  const [logDate, setLogDate] = useState(getTodayDateString());
+
   useEffect(() => {
     fetchWeight();
     fetchCalories();
@@ -45,8 +55,7 @@ export default function HealthDashboard() {
   };
 
   const fetchCalories = async () => {
-    const dateStr = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/health/calories?date=${dateStr}`);
+    const res = await fetch("/api/health/calories");
     if (res.ok) {
       const data = await res.json();
       setCalorieLogs(data.logs);
@@ -74,11 +83,15 @@ export default function HealthDashboard() {
     await fetch("/api/health/calories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ foodName, calories: parseInt(calories), mealType, date: new Date().toISOString() })
+      body: JSON.stringify({ 
+        foodName, 
+        calories: parseInt(calories), 
+        mealType, 
+        date: `${logDate}T00:00:00.000Z` 
+      })
     });
     setFoodName("");
     setCalories("");
-    setCustomizing(false);
     fetchCalories();
   };
 
@@ -118,8 +131,27 @@ export default function HealthDashboard() {
     setLoadingReport(false);
   };
 
-  const totalCaloriesToday = calorieLogs.reduce((sum, log) => sum + log.calories, 0);
+  const todayStr = getTodayDateString();
+  const calorieLogsToday = calorieLogs.filter(log => {
+    const logDateStr = log.date.split('T')[0];
+    return logDateStr === todayStr;
+  });
+  const totalCaloriesToday = calorieLogsToday.reduce((sum, log) => sum + log.calories, 0);
   const progressPercent = Math.min(100, (totalCaloriesToday / dailyGoal) * 100);
+
+  // Group logs by date
+  const getGroupedLogs = () => {
+    const grouped: Record<string, any[]> = {};
+    calorieLogs.forEach(log => {
+      const dateKey = log.date.split('T')[0];
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      grouped[dateKey].push(log);
+    });
+    return grouped;
+  };
+
+  const groupedLogs = getGroupedLogs();
+  const sortedDates = Object.keys(groupedLogs).sort((a, b) => b.localeCompare(a));
 
   const tabs = [
     { id: "calories", label: "Calories" },
@@ -220,6 +252,15 @@ export default function HealthDashboard() {
                 </div>
               </div>
 
+              {/* Reset Warning Note */}
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-3">
+                <span className="text-lg">⚠️</span>
+                <div className="text-xs text-amber-800 font-medium leading-relaxed">
+                  <strong className="block mb-0.5 font-bold">Aylık Sıfırlama Uyarısı</strong>
+                  Kalori loglarınız her ay başında otomatik olarak sıfırlanır. Veritabanında sadece içinde bulunulan ayın başından itibaren olan kayıtlar saklanır.
+                </div>
+              </div>
+
               {/* Log Food Card */}
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
@@ -258,6 +299,13 @@ export default function HealthDashboard() {
                 </div>
                 
                 <form onSubmit={addCalorieLog} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-1.5 ml-1">Log Tarihi</label>
+                    <DatePicker 
+                      value={logDate} 
+                      onChange={setLogDate} 
+                    />
+                  </div>
                   <input 
                     type="text" 
                     placeholder="Food Name (e.g. Avocado Toast)" 
@@ -293,33 +341,64 @@ export default function HealthDashboard() {
               </div>
 
               {/* History List */}
-              <div className="space-y-4 pt-4">
-                <h3 className="font-black text-slate-700 text-lg px-2">Today's Log</h3>
-                <div className="space-y-3">
-                  {calorieLogs.length === 0 ? (
-                    <div className="bg-white rounded-[2rem] p-8 text-center border border-dashed border-slate-200 flex flex-col items-center justify-center">
-                      <Apple size={32} className="text-slate-300 mb-3" />
-                      <p className="text-slate-500 font-medium">No food logged today.</p>
-                    </div>
-                  ) : (
-                    calorieLogs.map(log => (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        key={log.id} 
-                        className="bg-white rounded-2xl p-5 flex justify-between items-center shadow-sm border border-slate-100 hover:border-slate-200 transition-colors"
-                      >
-                        <div className="flex flex-col gap-1">
-                          <p className="font-bold text-slate-700 capitalize text-[15px]">{log.foodName}</p>
-                          <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md w-fit">{log.mealType}</span>
+              <div className="space-y-6 pt-4">
+                <h3 className="font-black text-slate-700 text-lg px-2">Yemek Geçmişi (Bu Ay)</h3>
+                
+                {sortedDates.length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-8 text-center border border-dashed border-slate-200 flex flex-col items-center justify-center">
+                    <Apple size={32} className="text-slate-300 mb-3" />
+                    <p className="text-slate-500 font-medium">Bu ay henüz yemek logu girilmemiş.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {sortedDates.map(dateKey => {
+                      const dayLogs = groupedLogs[dateKey];
+                      const dayTotal = dayLogs.reduce((sum, log) => sum + log.calories, 0);
+                      const isToday = dateKey === getTodayDateString();
+                      
+                      // Format date nicely
+                      const parts = dateKey.split('-');
+                      let formattedDate = dateKey;
+                      if (parts.length === 3) {
+                        const localDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                        formattedDate = localDate.toLocaleDateString('tr-TR', { weekday: 'long', month: 'long', day: 'numeric' });
+                      }
+                      if (isToday) formattedDate = `Bugün (${formattedDate})`;
+                      
+                      return (
+                        <div key={dateKey} className="space-y-2">
+                          <div className="flex justify-between items-center px-2">
+                            <span className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-[var(--primary)]' : 'text-slate-400'}`}>
+                              {formattedDate}
+                            </span>
+                            <span className="text-xs font-black text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                              Toplam: {dayTotal} kcal
+                            </span>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {dayLogs.map(log => (
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                key={log.id} 
+                                className="bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm border border-slate-100 hover:border-slate-200 transition-colors"
+                              >
+                                <div className="flex flex-col gap-1">
+                                  <p className="font-bold text-slate-700 capitalize text-[14px]">{log.foodName}</p>
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md w-fit">{log.mealType}</span>
+                                </div>
+                                <div className="bg-[var(--primary)]/10 text-[var(--primary)] px-3 py-1.5 rounded-xl font-black text-sm">
+                                  +{log.calories}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="bg-[var(--primary)]/10 text-[var(--primary)] px-3 py-1.5 rounded-xl font-black text-sm">
-                          +{log.calories}
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

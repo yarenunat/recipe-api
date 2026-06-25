@@ -12,6 +12,20 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const dateStr = searchParams.get("date"); // YYYY-MM-DD format
 
+    // Prune old logs first
+    const startOfMonth = new Date();
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+
+    await prisma.calorieLog.deleteMany({
+      where: {
+        userId: session.user.id,
+        date: {
+          lt: startOfMonth
+        }
+      }
+    });
+
     let whereClause: any = { userId: session.user.id };
 
     if (dateStr) {
@@ -52,6 +66,20 @@ export async function POST(req: Request) {
     const { calories, foodName, mealType, date, goal } = await req.json();
     const logDate = new Date(date);
 
+    // Prune old logs first
+    const startOfMonth = new Date();
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+
+    await prisma.calorieLog.deleteMany({
+      where: {
+        userId: session.user.id,
+        date: {
+          lt: startOfMonth
+        }
+      }
+    });
+
     const log = await prisma.calorieLog.create({
       data: {
         userId: session.user.id,
@@ -88,7 +116,7 @@ export async function DELETE(req: Request) {
 
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-    await prisma.calorieLog.delete({
+    await prisma.calorieLog.deleteMany({
       where: { id, userId: session.user.id }
     });
 

@@ -62,9 +62,7 @@ export async function POST(req: Request) {
         },
         images: imageBase64 ? {
           create: {
-            url: imageBase64,
-            width: 800,
-            height: 600
+            url: imageBase64
           }
         } : undefined
       }

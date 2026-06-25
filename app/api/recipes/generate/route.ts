@@ -136,10 +136,10 @@ export async function POST(req: Request) {
 
     /* ── Step 2: Generate structured recipe JSON ── */
 
-    const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
+    const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text). Keep all text concise to avoid truncation:
 {
   "title": "Recipe name",
-  "description": "Short appetizing description",
+  "description": "Short appetizing description (max 2 sentences)",
   "imagePrompt": "Brief one-sentence visual description of the finished dish",
   "ingredients": [{ "name": "ingredient", "quantity": "amount with unit" }],
   "instructions": ["Step 1...", "Step 2..."],
@@ -182,6 +182,7 @@ export async function POST(req: Request) {
       const result = await generateText({
         model: getModel(sourceImageUrl ? "vision" : provider),
         messages,
+        maxOutputTokens: 4000,
       });
       text = result.text;
     } catch (err) {
@@ -189,6 +190,7 @@ export async function POST(req: Request) {
       const fallbackResult = await generateText({
         model: getModel(provider),
         prompt: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`,
+        maxOutputTokens: 4000,
       });
       text = fallbackResult.text;
     }
@@ -199,7 +201,13 @@ export async function POST(req: Request) {
       .replace(/```\s*$/i, "")
       .trim();
 
-    const parsed = recipeSchema.parse(JSON.parse(cleaned));
+    let parsed;
+    try {
+      parsed = recipeSchema.parse(JSON.parse(cleaned));
+    } catch (parseError: any) {
+      console.error("Failed to parse JSON. Raw text:", text);
+      throw new Error(`JSON Parse Error: ${parseError.message}. Raw Output: ${text.slice(0, 100)}...`);
+    }
 
     /* ── Step 3: Food Visual Analyzer ── */
     // Analyze the FULL recipe (not just title) to build a precise image prompt
@@ -264,10 +272,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(savedRecipe);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Recipe generation error:", error);
     return NextResponse.json(
-      { error: "Failed to generate recipe" },
+      { error: "Failed to generate recipe", details: error?.message || String(error), stack: error?.stack },
       { status: 500 }
     );
   }

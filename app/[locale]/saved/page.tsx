@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Clock, Flame, ChefHat, Bookmark, Trash2, FolderOpen, Plus, X, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { motion, AnimatePresence } from "framer-motion";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function SavedRecipesPage() {
   const { recipes, isRecipesLoaded, fetchRecipes, setRecipes } = useAppStore();
@@ -16,6 +17,7 @@ export default function SavedRecipesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteRecipeConfirm, setDeleteRecipeConfirm] = useState<string | null>(null);
 
   // Pull-to-refresh state
   const [pullY, setPullY] = useState(0);
@@ -92,20 +94,22 @@ export default function SavedRecipesPage() {
     }
   }, [pullY, fetchRecipes]);
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.preventDefault(); // Prevent navigating to the recipe detail page
-    if (!confirm("Are you sure you want to delete this recipe?")) return;
-    
+  const doDeleteRecipe = async (id: string) => {
     try {
       const res = await fetch(`/api/recipes/${id}`, { method: "DELETE" });
       if (res.ok) {
         setRecipes(recipes.filter((r: any) => r.id !== id));
       } else {
-        alert("Failed to delete recipe.");
+        alert("Tarif silinemedi.");
       }
     } catch (error) {
-      alert("Error deleting recipe.");
+      alert("Bir hata oluştu.");
     }
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); // Prevent navigating to the recipe detail page
+    setDeleteRecipeConfirm(id);
   };
 
   return (
@@ -353,6 +357,17 @@ export default function SavedRecipesPage() {
         )}
       </AnimatePresence>
 
+      {/* Confirm: Delete Recipe */}
+      <ConfirmDialog
+        open={!!deleteRecipeConfirm}
+        title="Tarifi Sil"
+        message="Bu tarifi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
+        confirmLabel="Evet, Sil"
+        cancelLabel="Vazgeç"
+        variant="danger"
+        onConfirm={() => { const id = deleteRecipeConfirm!; setDeleteRecipeConfirm(null); doDeleteRecipe(id); }}
+        onCancel={() => setDeleteRecipeConfirm(null)}
+      />
     </div>
   );
 }

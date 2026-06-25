@@ -3,9 +3,11 @@ import { generateText } from "ai";
 import { getModel } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
 import { recipeSchema } from "../generate/route";
+import { auth } from "@/auth";
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
     const { ingredients, provider = "groq" } = await req.json();
 
     if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
@@ -44,6 +46,7 @@ ${systemInstruction}`
     // Wait, the client can just use the returned object and then save it, but we can also save it here directly.
     const savedRecipe = await prisma.recipe.create({
       data: {
+        userId: session?.user?.id || null,
         title: parsed.title,
         description: parsed.description,
         instructions: JSON.stringify(parsed.instructions),

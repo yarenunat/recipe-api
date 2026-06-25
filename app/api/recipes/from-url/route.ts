@@ -21,7 +21,6 @@ export async function POST(req: Request) {
 
     const { object } = await generateObject({
       model: getModel(provider),
-      mode: "json",
       schema: recipeSchema,
       prompt: `Extract a detailed recipe from the following website content. Do not omit temperature, duration, or quantities. If missing, estimate intelligently. Website Content: ${textContent}`,
     });

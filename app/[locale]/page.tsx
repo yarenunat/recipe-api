@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAppStore } from "@/store/useAppStore";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 export default function Home() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [session, setSession] = useState<any>(null);
+  const { data: session, status } = useSession();
+  const sessionLoading = status === "loading";
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { recipes, isRecipesLoaded, fetchRecipes } = useAppStore();
 
@@ -60,14 +61,7 @@ export default function Home() {
     }
   }, [pullY, fetchRecipes]);
 
-  useEffect(() => {
-    async function getSession() {
-      const res = await fetch("/api/auth/session");
-      const data = await res.json();
-      setSession(data);
-    }
-    getSession();
-  }, []);
+  // Session is now managed by useSession hook — no manual fetch needed
 
   const SOCIAL_DOMAINS = ["instagram.com", "tiktok.com", "twitter.com", "x.com", "facebook.com"];
   const isSocialUrl = (url: string) => {
@@ -90,18 +84,21 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, provider: "groq" }),
       });
-      if (!res.ok) throw new Error("Failed to generate recipe");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.details || errorData?.error || "Failed to generate recipe");
+      }
       
       const data = await res.json();
       // Refresh recipe list immediately so it appears when user comes back
       await fetchRecipes();
       setPrompt("");
       router.push(`/recipe/${data.id}`);
-    } catch (error) {
+    } catch (error: any) {
       if (isSocial) {
         alert("Instagram/TikTok linkleri direkt okunamıyor (giriş gerektiriyor). Lütfen yemek adını yazarak deneyin.\n\nÖrnek: 'Mantarlı Makarna' veya 'Sucuklu Yumurta'");
       } else {
-        alert("Hata oluştu. Lütfen tekrar deneyin.");
+        alert("Hata oluştu: " + error.message);
       }
       console.error(error);
       setLoading(false);
@@ -154,17 +151,26 @@ export default function Home() {
         {/* Header Profile */}
         <header className="px-6 pt-12 pb-6 flex justify-between items-center">
           <div className="flex items-center gap-4 relative">
-            {session?.user ? (
+            {sessionLoading ? (
+              // Skeleton to prevent Welcome Guest flash
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-slate-200 animate-pulse" />
+                <div className="space-y-2">
+                  <div className="w-12 h-3 bg-slate-200 rounded animate-pulse" />
+                  <div className="w-28 h-5 bg-slate-200 rounded animate-pulse" />
+                </div>
+              </div>
+            ) : session?.user ? (
               <>
                 <div 
                   className="flex items-center gap-4 cursor-pointer group"
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                 >
                   <div className="w-14 h-14 rounded-full bg-secondary border-2 border-white overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
-                    <img src={session.user.image || `https://ui-avatars.com/api/?name=${session.user.name || 'User'}&background=FFB5A7&color=fff`} alt="Avatar" />
+                    <img src={session.user.image || `https://ui-avatars.com/api/?name=${session.user.name || 'User'}&background=FFB5A7&color=fff`} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-400 font-medium">Hello,</p>
+                    <p className="text-sm text-slate-400 font-medium">Merhaba,</p>
                     <h1 className="text-xl font-bold tracking-wide text-slate-600">{session.user.name}</h1>
                   </div>
                 </div>
@@ -189,18 +195,18 @@ export default function Home() {
               </>
             ) : (
               <div>
-                <p className="text-sm text-slate-400 font-medium">Welcome,</p>
-                <h1 className="text-xl font-bold tracking-wide text-slate-600">Guest</h1>
+                <p className="text-sm text-slate-400 font-medium">Hoş geldin,</p>
+                <h1 className="text-xl font-bold tracking-wide text-slate-600">Misafir</h1>
               </div>
             )}
           </div>
           <div className="flex gap-2">
-            {!session?.user && (
+            {!sessionLoading && !session?.user && (
               <Link href="/login" className="px-4 py-2 bg-[var(--primary)] text-white rounded-full text-sm font-medium flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
-                <LogIn size={16} /> Sign In
+                <LogIn size={16} /> Giriş Yap
               </Link>
             )}
-            {session?.user && (
+            {!sessionLoading && session?.user && (
               <>
                 <Link href="/my-recipes" className="relative group" onClick={() => { setShowTutorial(false); localStorage.setItem("recipe_tutorial_seen", "true"); }}>
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm relative cursor-pointer hover:bg-slate-50 transition-colors border border-slate-100">
