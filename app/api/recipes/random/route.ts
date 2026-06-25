@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   "totalTime": 30,
   "servings": 4,
   "calories": 400,
-  "difficultyLevel": "Easy",
+  "difficultyLevel": "Easy", // MUST BE EXACTLY "Easy", "Medium", or "Hard" in English
   "cuisineType": "Global",
   "temperature": "180°C",
   "tips": ["Tip 1", "Tip 2"]

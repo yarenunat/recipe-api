@@ -9,7 +9,7 @@ import AddToCollectionButton from "@/components/AddToCollectionButton";
 
 export const revalidate = 60;
 
-export default async function RecipePage({ params }: { params: { id: string } }) {
+export default async function RecipePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
   const recipe = await prisma.recipe.findUnique({

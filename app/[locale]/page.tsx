@@ -6,6 +6,7 @@ import { ChefHat, Sparkles, Plus, Calendar, Bookmark, Search, Home as HomeIcon, 
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAppStore } from "@/store/useAppStore";
 import { signOut, useSession } from "next-auth/react";
 
@@ -166,8 +167,8 @@ export default function Home() {
                   className="flex items-center gap-4 cursor-pointer group"
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                 >
-                  <div className="w-14 h-14 rounded-full bg-secondary border-2 border-white overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
-                    <img src={session.user.image || `https://ui-avatars.com/api/?name=${session.user.name || 'User'}&background=FFB5A7&color=fff`} alt="Avatar" className="w-full h-full object-cover" />
+                  <div className="w-14 h-14 rounded-full bg-secondary border-2 border-white overflow-hidden shadow-sm group-hover:shadow-md transition-shadow relative">
+                    <Image src={session.user.image || `https://ui-avatars.com/api/?name=${session.user.name || 'User'}&background=FFB5A7&color=fff`} alt="Avatar" fill sizes="56px" className="object-cover" />
                   </div>
                   <div>
                     <p className="text-sm text-slate-400 font-medium">Merhaba,</p>
@@ -321,10 +322,13 @@ export default function Home() {
                   >
                     <div className="absolute inset-0 bg-black/10 z-0"></div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
-                    <img 
+                    <Image 
                       src={recipes[0].images?.[0]?.url || "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=800&auto=format&fit=crop"} 
-                      className="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition-transform duration-500" 
+                      className="object-cover z-0 group-hover:scale-105 transition-transform duration-500" 
                       alt={recipes[0].title}
+                      fill
+                      priority
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     
                     <div className="relative z-20 text-white">
@@ -357,10 +361,12 @@ export default function Home() {
                 >
                   <div className="absolute inset-0 bg-white/40 z-0"></div>
                   <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/50 to-white/10 z-10"></div>
-                  <img 
+                  <Image 
                     src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=800&auto=format&fit=crop" 
-                    className="absolute inset-0 w-full h-full object-cover z-0 opacity-80" 
+                    className="object-cover z-0 opacity-80" 
                     alt="Healthy Food"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
                   />
                   
                   <div className="relative z-20">
@@ -410,10 +416,12 @@ export default function Home() {
                     <Link href={`/recipe/${recipe.id}`} key={recipe.id}>
                       <div className="rounded-[1.5rem] p-4 flex flex-col gap-3 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow bg-white h-full group">
                         <div className="w-full h-24 rounded-xl overflow-hidden bg-slate-100 relative">
-                          <img 
+                          <Image 
                             src={recipe.images?.[0]?.url || "https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=800&auto=format&fit=crop"} 
                             alt={recipe.title} 
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                            className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                            fill
+                            sizes="(max-width: 768px) 50vw, 25vw"
                           />
                         </div>
                         <span className="font-semibold text-sm text-slate-600 line-clamp-2 leading-tight">{recipe.title}</span>

@@ -5,13 +5,20 @@ import { auth } from "@/auth";
 export async function GET() {
   try {
     const session = await auth();
-    const userId = session?.user?.id || null;
+    
+    // ENFORCE ISOLATION: No logged in user -> no recipes
+    if (!session?.user?.id) {
+      return NextResponse.json([]);
+    }
+    
+    const userId = session.user.id;
 
     const recipes = await prisma.recipe.findMany({
-      where: userId ? { userId } : {}, // Return all if no user is logged in for demo purposes
+      where: { userId }, 
+      take: 20, // PAGINATION: Limit to latest 20 recipes to avoid crashing
       include: {
         images: true,
-        ingredients: { include: { ingredient: true } },
+        // OMIT ingredients to drastically reduce API payload size for homepage
       },
       orderBy: { createdAt: "desc" },
     });

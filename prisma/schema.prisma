@@ -111,6 +111,7 @@ model Recipe {
   favorites     Favorite[]
   mealPlanItems MealPlanItem[]
 
+  @@index([userId])
   @@map("recipes")
 }
 
@@ -137,6 +138,8 @@ model RecipeIngredient {
   recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
+  @@index([recipeId])
+  @@index([ingredientId])
   @@map("recipe_ingredients")
 }
 
@@ -148,6 +151,7 @@ model RecipeImage {
 
   recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
+  @@index([recipeId])
   @@map("recipe_images")
 }
 
@@ -163,6 +167,7 @@ model Collection {
   user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   recipes CollectionRecipe[]
 
+  @@index([userId])
   @@map("collections")
 }
 
@@ -175,6 +180,8 @@ model CollectionRecipe {
   recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, recipeId])
+  @@index([collectionId])
+  @@index([recipeId])
   @@map("collection_recipes")
 }
 
@@ -189,6 +196,7 @@ model ShoppingList {
   user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items ShoppingItem[]
 
+  @@index([userId])
   @@map("shopping_lists")
 }
 
@@ -203,6 +211,8 @@ model ShoppingItem {
   shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
   ingredient   Ingredient   @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
+  @@index([shoppingListId])
+  @@index([ingredientId])
   @@map("shopping_items")
 }
 
@@ -217,6 +227,7 @@ model MealPlan {
   user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items MealPlanItem[]
 
+  @@index([userId])
   @@map("meal_plans")
 }
 
@@ -231,6 +242,8 @@ model MealPlanItem {
   mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
   recipe   Recipe?  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
+  @@index([mealPlanId])
+  @@index([recipeId])
   @@map("meal_plan_items")
 }
 
@@ -245,6 +258,8 @@ model Favorite {
   recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
   @@map("favorites")
 }
 
@@ -259,6 +274,7 @@ model AIHistory {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("ai_histories")
 }
 
@@ -281,6 +297,8 @@ model WeightLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([date])
   @@map("weight_logs")
 }
 
@@ -295,5 +313,7 @@ model CalorieLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([date])
   @@map("calorie_logs")
 }

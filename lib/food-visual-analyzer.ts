@@ -108,11 +108,8 @@ OUTPUT FORMAT (return ONLY this JSON, no markdown)
       prompt: analysisPrompt,
     });
 
-    const cleaned = result.text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
+    const match = result.text.match(/\{[\s\S]*\}/);
+    const cleaned = match ? match[0] : result.text;
 
     const analysis: FoodVisualAnalysis = JSON.parse(cleaned);
 
