@@ -136,13 +136,24 @@ export async function POST(req: Request) {
 
     /* ── Step 2: Generate structured recipe JSON ── */
 
+    const { searchParams } = new URL(req.url);
+    const locale = searchParams.get("locale") || "tr";
+    const localeToLanguage: Record<string, string> = {
+      en: "English",
+      tr: "Turkish",
+      zh: "Mandarin Chinese",
+      hi: "Hindi",
+      es: "Spanish"
+    };
+    const targetLanguage = localeToLanguage[locale] || "Turkish";
+
     const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text). Keep all text concise to avoid truncation:
 {
-  "title": "Recipe name",
-  "description": "Short appetizing description (max 2 sentences)",
-  "imagePrompt": "Brief one-sentence visual description of the finished dish",
-  "ingredients": [{ "name": "ingredient", "quantity": "amount with unit" }],
-  "instructions": ["Step 1...", "Step 2..."],
+  "title": "Recipe name (in ${targetLanguage})",
+  "description": "Short appetizing description (max 2 sentences, in ${targetLanguage})",
+  "imagePrompt": "Brief one-sentence visual description of the finished dish (in English, for the image generator)",
+  "ingredients": [{ "name": "ingredient (in ${targetLanguage})", "quantity": "amount with unit (in ${targetLanguage})" }],
+  "instructions": ["Step 1... (in ${targetLanguage})", "Step 2... (in ${targetLanguage})"],
   "cookingTime": 20,
   "prepTime": 10,
   "totalTime": 30,
@@ -152,7 +163,8 @@ export async function POST(req: Request) {
   "cuisineType": "Turkish",
   "temperature": "180°C",
   "tips": ["Tip 1", "Tip 2"]
-}`;
+}
+CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${targetLanguage}!`;
 
     let messages: any[] = [];
     if (sourceImageUrl) {

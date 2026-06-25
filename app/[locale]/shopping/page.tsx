@@ -6,6 +6,7 @@ import { ShoppingCart, CheckCircle2, Circle, Trash2, Plus, Sparkles, Loader2, Ch
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 export default function ShoppingPage() {
   const [lists, setLists] = useState<any[]>([]);
@@ -13,6 +14,9 @@ export default function ShoppingPage() {
   const [newItemName, setNewItemName] = useState<Record<string, string>>({});
   const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
   const [deleteListConfirm, setDeleteListConfirm] = useState<string | null>(null);
+
+  const dict = useDictionary();
+  const t = dict.shopping;
 
   useEffect(() => {
     fetchLists();
@@ -183,14 +187,14 @@ export default function ShoppingPage() {
                 </div>
               </Link>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-                Shopping List
+                {t.title}
               </h1>
             </div>
             <div className="w-10 h-10 bg-[var(--primary)]/10 text-[var(--primary)] rounded-2xl flex items-center justify-center shadow-inner">
               <ShoppingCart size={20} />
             </div>
           </div>
-          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">Keep track of the ingredients you need to buy.</p>
+          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">{t.subtitle}</p>
         </div>
       </header>
 
@@ -200,8 +204,8 @@ export default function ShoppingPage() {
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
               <ShoppingCart size={32} className="text-slate-300" />
             </div>
-            <h3 className="text-lg font-bold text-slate-600 mb-2">No Shopping Lists</h3>
-            <p className="text-slate-400 text-sm max-w-[200px] font-medium">Go to a recipe and tap the 'Add to Shopping List' button to start planning.</p>
+            <h3 className="text-lg font-bold text-slate-600 mb-2">{t.no_lists_title}</h3>
+            <p className="text-slate-400 text-sm max-w-[200px] font-medium">{t.no_lists_desc}</p>
           </motion.div>
         ) : (
           lists.map((list) => (
@@ -220,7 +224,7 @@ export default function ShoppingPage() {
               <div className="mb-6 flex items-center gap-2">
                 <input 
                   type="text" 
-                  placeholder="Add manual item..." 
+                  placeholder={t.add_item_placeholder} 
                   value={newItemName[list.id] || ""}
                   onChange={(e) => setNewItemName(prev => ({ ...prev, [list.id]: e.target.value }))}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddItem(list.id)}
@@ -252,7 +256,7 @@ export default function ShoppingPage() {
                 ))}
 
                 {list.items.length === 0 && (
-                  <p className="text-slate-400 text-sm text-center py-4">No items in this list.</p>
+                  <p className="text-slate-400 text-sm text-center py-4">{t.no_items}</p>
                 )}
               </div>
             </motion.div>
@@ -263,10 +267,10 @@ export default function ShoppingPage() {
 
       <ConfirmDialog
         open={!!deleteListConfirm}
-        title="Listeyi Sil"
-        message="Bu alışveriş listesini kalıcı olarak silmek istediğinize emin misiniz?"
-        confirmLabel="Evet, Sil"
-        cancelLabel="Vazgeç"
+        title={t.delete_list_title}
+        message={t.delete_list_msg}
+        confirmLabel={t.confirm_delete}
+        cancelLabel={t.cancel}
         variant="danger"
         onConfirm={() => { const id = deleteListConfirm!; setDeleteListConfirm(null); deleteList(id); }}
         onCancel={() => setDeleteListConfirm(null)}

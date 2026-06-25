@@ -6,9 +6,12 @@ import { Clock, Flame, ChefHat, Bookmark, Trash2, FolderOpen, Plus, X, Loader2 }
 import { useAppStore } from "@/store/useAppStore";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 export default function SavedRecipesPage() {
   const { recipes, isRecipesLoaded, fetchRecipes, setRecipes } = useAppStore();
+  const dict = useDictionary();
+  const t = dict.saved;
   
   const [activeTab, setActiveTab] = useState<"recipes" | "collections">("recipes");
   const [collections, setCollections] = useState<any[]>([]);
@@ -134,13 +137,13 @@ export default function SavedRecipesPage() {
           <div className={`w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full ${
             isRefreshing ? "animate-spin" : ""
           }`} style={{ transform: !isRefreshing ? `rotate(${pullY * 3}deg)` : undefined }} />
-          {isRefreshing ? "Yenileniyor..." : "Yenilemek için bırakın"}
+          {isRefreshing ? t.refreshing : t.pull_to_refresh}
         </div>
       </div>
       <div className="max-w-5xl mx-auto">
         <header className="px-6 pt-12 pb-2 z-50">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-700">Saved</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-700">{t.title}</h1>
             <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center border border-slate-100 text-[var(--primary)]">
               <Bookmark size={20} />
             </div>
@@ -154,7 +157,7 @@ export default function SavedRecipesPage() {
                 activeTab === "recipes" ? "bg-white text-[var(--primary)] shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              Recipes
+              {t.recipes_tab}
             </button>
             <button
               onClick={() => setActiveTab("collections")}
@@ -162,7 +165,7 @@ export default function SavedRecipesPage() {
                 activeTab === "collections" ? "bg-white text-[var(--primary)] shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              Collections
+              {t.collections_tab}
             </button>
           </div>
         </header>
@@ -186,11 +189,11 @@ export default function SavedRecipesPage() {
                 ) : recipes.length === 0 ? (
                   <div className="bg-white rounded-[2rem] p-8 text-center border border-slate-100 shadow-sm mt-4">
                     <ChefHat size={48} className="mx-auto text-slate-300 mb-4" />
-                    <h3 className="text-xl font-semibold text-slate-600 mb-2">No recipes yet</h3>
-                    <p className="text-slate-500 mb-6">Start generating some AI recipes on the home page!</p>
+                    <h3 className="text-xl font-semibold text-slate-600 mb-2">{t.no_recipes_title}</h3>
+                    <p className="text-slate-500 mb-6">{t.no_recipes_desc}</p>
                     <Link href="/">
                       <button className="bg-[var(--primary)] text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:opacity-90 transition-opacity">
-                        Go to Home
+                        {t.go_home}
                       </button>
                     </Link>
                   </div>
@@ -258,7 +261,7 @@ export default function SavedRecipesPage() {
                       <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-white flex items-center justify-center mb-3 transition-colors shadow-sm">
                         <Plus size={24} />
                       </div>
-                      <span className="font-semibold text-sm">New Collection</span>
+                      <span className="font-semibold text-sm">{t.new_collection}</span>
                     </div>
 
                     {collections.map(collection => (
@@ -271,7 +274,7 @@ export default function SavedRecipesPage() {
                           
                           <div className="flex-1">
                             <h3 className="font-bold text-slate-700 leading-tight line-clamp-2">{collection.name}</h3>
-                            <p className="text-xs text-slate-400 mt-1">{collection.recipes?.length || 0} recipes</p>
+                            <p className="text-xs text-slate-400 mt-1">{collection.recipes?.length || 0} {t.recipes_count}</p>
                           </div>
 
                           {/* Preview mini-images */}
@@ -324,7 +327,7 @@ export default function SavedRecipesPage() {
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
               
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black text-slate-800">New Collection</h2>
+                <h2 className="text-2xl font-black text-slate-800">{t.new_collection}</h2>
                 <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
                   <X size={18} />
                 </button>
@@ -332,12 +335,12 @@ export default function SavedRecipesPage() {
 
               <form onSubmit={handleCreateCollection} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Collection Name</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.collection_name_label}</label>
                   <input 
                     type="text" 
                     value={newCollectionName}
                     onChange={(e) => setNewCollectionName(e.target.value)}
-                    placeholder="e.g. Healthy Dinners" 
+                    placeholder={t.collection_name_placeholder} 
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-transparent transition-all font-medium text-slate-700"
                     required
                     autoFocus
@@ -349,7 +352,7 @@ export default function SavedRecipesPage() {
                   disabled={!newCollectionName.trim() || isSubmitting}
                   className="w-full bg-[var(--primary)] text-white rounded-2xl py-4 font-black flex items-center justify-center gap-2 hover:bg-[var(--primary)]/90 transition-colors shadow-lg shadow-[var(--primary)]/20 disabled:opacity-50 mt-4"
                 >
-                  {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : "Create Collection"}
+                  {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : t.create_collection}
                 </button>
               </form>
             </motion.div>
@@ -360,10 +363,10 @@ export default function SavedRecipesPage() {
       {/* Confirm: Delete Recipe */}
       <ConfirmDialog
         open={!!deleteRecipeConfirm}
-        title="Tarifi Sil"
-        message="Bu tarifi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
-        confirmLabel="Evet, Sil"
-        cancelLabel="Vazgeç"
+        title={t.delete_recipe_title}
+        message={t.delete_recipe_msg}
+        confirmLabel={t.confirm_delete}
+        cancelLabel={t.cancel}
         variant="danger"
         onConfirm={() => { const id = deleteRecipeConfirm!; setDeleteRecipeConfirm(null); doDeleteRecipe(id); }}
         onCancel={() => setDeleteRecipeConfirm(null)}

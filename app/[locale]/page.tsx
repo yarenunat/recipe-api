@@ -4,20 +4,30 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ChefHat, Sparkles, Plus, Calendar, Bookmark, Search, Home as HomeIcon, Clock, Flame, Dice5, Refrigerator, HeartPulse, LogOut, LogIn, ShoppingCart, ChevronRight, Settings, Book, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAppStore } from "@/store/useAppStore";
 import { signOut, useSession } from "next-auth/react";
+import { useDictionary } from "@/components/DictionaryProvider";
+
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Home() {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = pathname?.split('/')[1] || 'tr';
+  
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const { data: session, status } = useSession();
   const sessionLoading = status === "loading";
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showCuisineModal, setShowCuisineModal] = useState(false);
   const { recipes, isRecipesLoaded, fetchRecipes } = useAppStore();
+  
+  const dict = useDictionary();
+  const t = dict.home;
 
   // Pull-to-refresh state
   const [pullY, setPullY] = useState(0);
@@ -80,7 +90,7 @@ export default function Home() {
     const isSocial = isLink && isSocialUrl(prompt);
 
     try {
-      const res = await fetch("/api/recipes/generate", {
+      const res = await fetch(`/api/recipes/generate?locale=${currentLocale}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, provider: "groq" }),
@@ -107,10 +117,14 @@ export default function Home() {
   };
 
 
-  const generateRandom = async () => {
+  const generateRandom = async (cuisine?: string) => {
     setLoading(true);
+    setShowCuisineModal(false);
     try {
-      const res = await fetch("/api/recipes/random");
+      const url = cuisine && cuisine !== 'random' 
+        ? `/api/recipes/random?cuisine=${encodeURIComponent(cuisine)}&locale=${currentLocale}` 
+        : `/api/recipes/random?locale=${currentLocale}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to generate random recipe");
       
       const data = await res.json();
@@ -145,12 +159,12 @@ export default function Home() {
           <div className={`w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full ${
             isRefreshing ? "animate-spin" : ""
           }`} style={{ transform: !isRefreshing ? `rotate(${pullY * 3}deg)` : undefined }} />
-          {isRefreshing ? "Yenileniyor..." : "Yenilemek için bırakın"}
+          {isRefreshing ? t.refreshing : t.pull_to_refresh}
         </div>
       </div>
       <div className="max-w-5xl mx-auto">
         {/* Header Profile */}
-        <header className="px-6 pt-12 pb-6 flex justify-between items-center">
+        <header className="px-6 pt-12 pb-6 flex justify-between items-center relative z-[100]">
           <div className="flex items-center gap-4 relative">
             {sessionLoading ? (
               // Skeleton to prevent Welcome Guest flash
@@ -171,7 +185,7 @@ export default function Home() {
                     <Image src={session.user.image || `https://ui-avatars.com/api/?name=${session.user.name || 'User'}&background=FFB5A7&color=fff`} alt="Avatar" fill sizes="56px" className="object-cover" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-400 font-medium">Merhaba,</p>
+                    <p className="text-sm text-slate-400 font-medium">{t.hello}</p>
                     <h1 className="text-xl font-bold tracking-wide text-slate-600">{session.user.name}</h1>
                   </div>
                 </div>
@@ -181,7 +195,7 @@ export default function Home() {
                   <div className="absolute top-[70px] left-0 w-48 bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden z-50 py-2">
                     <Link href="/settings" className="w-full text-left px-4 py-3 flex items-center gap-3 text-slate-600 hover:bg-slate-50 transition-colors">
                       <Settings size={18} className="text-slate-400" />
-                      <span className="font-medium text-sm">Ayarlar</span>
+                      <span className="font-medium text-sm">{t.settings}</span>
                     </Link>
                     <div className="h-px w-full bg-slate-50 my-1"></div>
                     <button 
@@ -189,22 +203,23 @@ export default function Home() {
                       className="w-full text-left px-4 py-3 flex items-center gap-3 text-slate-600 hover:bg-slate-50 transition-colors"
                     >
                       <LogOut size={18} className="text-rose-500" />
-                      <span className="font-medium text-sm">Çıkış Yap</span>
+                      <span className="font-medium text-sm">{t.logout}</span>
                     </button>
                   </div>
                 )}
               </>
             ) : (
               <div>
-                <p className="text-sm text-slate-400 font-medium">Hoş geldin,</p>
-                <h1 className="text-xl font-bold tracking-wide text-slate-600">Misafir</h1>
+                <p className="text-sm text-slate-400 font-medium">{t.welcome}</p>
+                <h1 className="text-xl font-bold tracking-wide text-slate-600">{t.guest}</h1>
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <LanguageSwitcher />
             {!sessionLoading && !session?.user && (
               <Link href="/login" className="px-4 py-2 bg-[var(--primary)] text-white rounded-full text-sm font-medium flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
-                <LogIn size={16} /> Giriş Yap
+                <LogIn size={16} /> {t.login}
               </Link>
             )}
             {!sessionLoading && session?.user && (
@@ -231,8 +246,8 @@ export default function Home() {
                         <X size={14} />
                       </button>
                       <p className="text-sm font-medium mt-1">
-                        <span className="font-bold text-[var(--primary)] block mb-1">Yeni!</span>
-                        Kendi tariflerinizi ekledikten sonra bu defterden ulaşabilirsiniz.
+                        <span className="font-bold text-[var(--primary)] block mb-1">{t.tutorial_new}</span>
+                        {t.tutorial_text}
                       </p>
                     </div>
                   )}
@@ -263,14 +278,14 @@ export default function Home() {
                 className="space-y-4 order-2 md:order-1"
               >
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-xl font-semibold text-slate-600">What's your craving?</h3>
+                  <h3 className="text-xl font-semibold text-slate-600">{t.whats_craving}</h3>
                 </div>
                 
                 <div className="bg-white rounded-[2rem] p-2 pl-6 flex items-center shadow-md border border-slate-100 relative overflow-hidden">
                   {loading && (
                     <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex items-center justify-center gap-3">
                       <div className="w-5 h-5 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm font-medium text-[var(--primary)]">Crafting your recipe...</span>
+                      <span className="text-sm font-medium text-[var(--primary)]">{t.crafting}</span>
                     </div>
                   )}
                   <Search size={22} className="text-slate-300 flex-shrink-0" />
@@ -278,7 +293,7 @@ export default function Home() {
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="e.g. A healthy avocado toast..." 
+                    placeholder={t.search_placeholder}
                     className="border-0 bg-transparent text-slate-600 placeholder:text-slate-400 focus-visible:ring-0 shadow-none text-base h-14"
                     disabled={loading}
                   />
@@ -293,18 +308,18 @@ export default function Home() {
 
                 <div className="mt-5">
                   <button 
-                    onClick={generateRandom}
+                    onClick={() => setShowCuisineModal(true)}
                     disabled={loading}
                     className="w-full bg-[var(--primary)] text-white rounded-full py-4 px-6 font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-70 disabled:pointer-events-none"
                   >
-                    <span className="text-[17px] tracking-wide">Bugün Ne Pişirsem?</span>
+                    <span className="text-[17px] tracking-wide">{t.random_button}</span>
                   </button>
                   <Link href="/my-recipes/new">
                     <button 
                       className="w-full bg-white text-[var(--primary)] border-2 border-[var(--primary)] rounded-full py-4 px-6 font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-[var(--primary)]/5 active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-70 disabled:pointer-events-none mt-4"
                     >
                       <Plus size={22} className="mr-2" />
-                      <span className="text-[17px] tracking-wide">Kendi Tarifini Ekle</span>
+                      <span className="text-[17px] tracking-wide">{t.add_custom}</span>
                     </button>
                   </Link>
                 </div>
@@ -372,17 +387,17 @@ export default function Home() {
                   <div className="relative z-20">
                     <div className="flex justify-between items-start mb-2">
                       <h2 className="text-3xl font-bold text-slate-700 leading-tight">
-                        Healthy <br/>Living
+                        {t.healthy_living_1} <br/>{t.healthy_living_2}
                       </h2>
                       <div className="w-10 h-10 rounded-full bg-white/60 backdrop-blur-md flex items-center justify-center text-[var(--primary)] cursor-pointer hover:bg-white transition-colors shadow-sm">
                         <Bookmark size={18} />
                       </div>
                     </div>
                     <p className="text-sm text-slate-500 mb-6 max-w-[200px]">
-                      Discover nutritious meals tailored to your taste.
+                      {t.healthy_desc}
                     </p>
                     <button className="bg-[var(--primary)] text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:opacity-90 transition-opacity">
-                      See collection
+                      {t.see_collection}
                     </button>
                   </div>
                 </motion.div>
@@ -398,9 +413,9 @@ export default function Home() {
               className="space-y-6"
             >
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xl font-semibold text-slate-600">Recent Recipes</h3>
+                <h3 className="text-xl font-semibold text-slate-600">{t.recent_recipes}</h3>
                 <Link href="/saved">
-                  <span className="text-sm text-[var(--primary)] font-medium cursor-pointer hover:underline">See all</span>
+                  <span className="text-sm text-[var(--primary)] font-medium cursor-pointer hover:underline">{t.see_all}</span>
                 </Link>
               </div>
               
@@ -436,7 +451,7 @@ export default function Home() {
               ) : (
                 <div className="bg-white rounded-[1.5rem] p-8 text-center border border-dashed border-slate-200 flex flex-col items-center justify-center">
                   <ChefHat size={32} className="text-slate-300 mb-3" />
-                  <p className="text-slate-500 text-sm">Your new generated recipes will appear here.</p>
+                  <p className="text-slate-500 text-sm">{t.no_recipes}</p>
                 </div>
               )}
 
@@ -448,8 +463,8 @@ export default function Home() {
                       <ShoppingCart size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-700">Alınacaklar Listesi</h3>
-                      <p className="text-xs text-slate-400">Eksik malzemelerini tamamla</p>
+                      <h3 className="font-bold text-slate-700">{t.shopping_list}</h3>
+                      <p className="text-xs text-slate-400">{t.shopping_desc}</p>
                     </div>
                   </div>
                   <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-[var(--primary)] transition-colors">
@@ -462,6 +477,60 @@ export default function Home() {
         </main>
       </div>
 
+      {/* Cuisine Selection Modal */}
+      {showCuisineModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl"
+          >
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">{t.which_cuisine}</h3>
+                <p className="text-sm text-slate-500 font-medium">{t.cuisine_desc}</p>
+              </div>
+              <button 
+                onClick={() => setShowCuisineModal(false)}
+                className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-sm transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
+              <button 
+                onClick={() => generateRandom("random")} 
+                className="col-span-2 py-4 rounded-xl border border-[var(--primary)] bg-gradient-to-r from-[var(--primary)] to-orange-400 text-white font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all shadow-md"
+              >
+                <Sparkles size={22} className="text-yellow-200" /> {t.surprise_me}
+              </button>
+              
+              {[
+                { name: t.cuisines.tr, id: "Türk", code: "tr" },
+                { name: t.cuisines.it, id: "İtalyan", code: "it" },
+                { name: t.cuisines.mx, id: "Meksika", code: "mx" },
+                { name: t.cuisines.kr, id: "Kore", code: "kr" },
+                { name: t.cuisines.cn, id: "Çin", code: "cn" },
+                { name: t.cuisines.in, id: "Hint", code: "in" },
+                { name: t.cuisines.us, id: "Amerikan", code: "us" },
+                { name: t.cuisines.fr, id: "Fransız", code: "fr" },
+                { name: t.cuisines.gr, id: "Yunan", code: "gr" },
+                { name: t.cuisines.jp, id: "Japon", code: "jp" },
+              ].map((c) => (
+                <button 
+                  key={c.name}
+                  onClick={() => generateRandom(c.id)}
+                  className="py-3 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold flex items-center gap-3 hover:border-[var(--primary)] hover:text-[var(--primary)] hover:shadow-md hover:-translate-y-0.5 transition-all text-left group"
+                >
+                  <img src={`https://flagcdn.com/w40/${c.code}.png`} alt={c.name} className="w-7 h-5 object-cover rounded-sm shadow-sm group-hover:scale-110 transition-transform" />
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

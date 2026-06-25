@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Sparkles, Plus, X, Refrigerator, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 const COMMON_INGREDIENTS = [
   { name: "Chicken", emoji: "🍗", color: "bg-orange-50 text-orange-600 border-orange-100" },
@@ -34,6 +35,8 @@ export default function PantryPage() {
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [customIngredient, setCustomIngredient] = useState("");
   const [loading, setLoading] = useState(false);
+  const dict = useDictionary();
+  const t = dict.pantry;
 
   const toggleIngredient = (name: string) => {
     if (ingredients.includes(name)) {
@@ -88,14 +91,14 @@ export default function PantryPage() {
                 </div>
               </Link>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-                My Pantry
+                {t.title}
               </h1>
             </div>
             <div className="w-10 h-10 bg-teal-50 text-teal-500 rounded-2xl flex items-center justify-center shadow-inner">
               <Refrigerator size={20} />
             </div>
           </div>
-          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">What's in your fridge? Select ingredients and let AI do the magic.</p>
+          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">{t.subtitle}</p>
         </div>
       </header>
 
@@ -130,7 +133,7 @@ export default function PantryPage() {
         <form onSubmit={addCustomIngredient} className="bg-white rounded-full p-2 shadow-sm border border-slate-100 flex items-center gap-2 transition-shadow focus-within:shadow-md focus-within:border-teal-200">
           <input 
             type="text" 
-            placeholder="Search or add custom ingredient..." 
+            placeholder={t.search_placeholder} 
             value={customIngredient}
             onChange={e => setCustomIngredient(e.target.value)}
             className="flex-1 bg-transparent border-none outline-none px-4 text-slate-700 placeholder:text-slate-400 font-medium"
@@ -152,8 +155,8 @@ export default function PantryPage() {
               
               <div className="relative z-10">
                 <h3 className="font-bold text-lg mb-4 flex items-center justify-between">
-                  Selected Ingredients
-                  <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full">{ingredients.length} items</span>
+                  {t.selected_ingredients}
+                  <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full">{ingredients.length} {t.items}</span>
                 </h3>
                 
                 <div className="flex flex-wrap gap-2 mb-8">
@@ -181,12 +184,12 @@ export default function PantryPage() {
                   {loading ? (
                     <>
                       <Loader2 size={22} className="animate-spin" />
-                      Creating magic...
+                      {t.creating_magic}
                     </>
                   ) : (
                     <>
                       <Sparkles size={22} />
-                      Generate Recipe
+                      {t.generate_recipe}
                     </>
                   )}
                 </button>

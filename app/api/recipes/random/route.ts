@@ -11,28 +11,44 @@ export async function GET(req: Request) {
     const session = await auth();
     const { searchParams } = new URL(req.url);
     const provider = (searchParams.get("provider") || "groq") as AIProvider;
+    const cuisine = searchParams.get("cuisine");
+    const locale = searchParams.get("locale") || "tr";
+    
+    const localeToLanguage: Record<string, string> = {
+      en: "English",
+      tr: "Turkish",
+      zh: "Mandarin Chinese",
+      hi: "Hindi",
+      es: "Spanish"
+    };
+    const targetLanguage = localeToLanguage[locale] || "Turkish";
 
     const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
 {
-  "title": "Recipe name",
-  "description": "Short appetizing description",
-  "imagePrompt": "Brief one-sentence visual description of the finished dish",
-  "ingredients": [{ "name": "ingredient", "quantity": "amount with unit" }],
-  "instructions": ["Step 1...", "Step 2..."],
+  "title": "Recipe name (in ${targetLanguage})",
+  "description": "Short appetizing description (in ${targetLanguage})",
+  "imagePrompt": "Brief one-sentence visual description of the finished dish (in English, for the image generator)",
+  "ingredients": [{ "name": "ingredient (in ${targetLanguage})", "quantity": "amount with unit (in ${targetLanguage})" }],
+  "instructions": ["Step 1... (in ${targetLanguage})", "Step 2... (in ${targetLanguage})"],
   "cookingTime": 20,
   "prepTime": 10,
   "totalTime": 30,
   "servings": 4,
   "calories": 400,
   "difficultyLevel": "Easy", // MUST BE EXACTLY "Easy", "Medium", or "Hard" in English
-  "cuisineType": "Global",
+  "cuisineType": "${cuisine ? cuisine : "Global"}",
   "temperature": "180°C",
   "tips": ["Tip 1", "Tip 2"]
-}`;
+}
+CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${targetLanguage}!`;
+
+    const promptText = cuisine
+      ? `You are an expert chef. Generate a highly creative, authentic, and mouth-watering ${cuisine} recipe. The cuisine MUST be strictly ${cuisine}. Surprise me with a unique or classic dish from this region!\n\n${systemInstruction}`
+      : `You are an expert chef. Generate a completely random, highly creative, and mouth-watering recipe. Surprise me with something unique, perhaps a fusion dish or a forgotten classic!\n\n${systemInstruction}`;
 
     const { text } = await generateText({
       model: getModel(provider),
-      prompt: `You are an expert chef. Generate a completely random, highly creative, and mouth-watering recipe. Surprise me with something unique, perhaps a fusion dish or a forgotten classic!\n\n${systemInstruction}`,
+      prompt: promptText,
     });
 
     const cleaned = text

@@ -25,17 +25,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+import { getDictionary } from "@/i18n/dictionaries";
+import { DictionaryProvider } from "@/components/DictionaryProvider";
+
+export default async function RootLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }>) {
+  const { locale } = await params;
+  const dictionary = await getDictionary(locale);
+
   return (
-    <html lang="en" className={`${montserrat.variable} h-full antialiased`}>
+    <html lang={locale} className={`${montserrat.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <Providers>
-          {children}
-          <BottomNav />
+          <DictionaryProvider dictionary={dictionary}>
+            {children}
+            <BottomNav />
+          </DictionaryProvider>
         </Providers>
       </body>
     </html>

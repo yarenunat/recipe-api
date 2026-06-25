@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { User, Lock, Camera, ChevronLeft, Save, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 const AVATAR_COLORS = ["FFB5A7", "93C5FD", "86EFAC", "FCD34D", "D8B4FE", "FDA4AF"];
 
@@ -21,6 +22,8 @@ export default function SettingsPage() {
 function SettingsContent() {
   const { data: session, update } = useSession();
   const router = useRouter();
+  const dict = useDictionary();
+  const t = dict.settings;
 
   const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
   const [loading, setLoading] = useState(false);
@@ -76,9 +79,9 @@ function SettingsContent() {
         image: data.user.image,
       });
 
-      setSuccess("Profiliniz başarıyla güncellendi.");
+      setSuccess(t.profile_updated);
     } catch (err: any) {
-      setError(err.message || "Bir hata oluştu.");
+      setError(err.message || t.error_generic);
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ function SettingsContent() {
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setError("Yeni şifreler eşleşmiyor.");
+      setError(t.passwords_mismatch);
       return;
     }
 
@@ -105,12 +108,12 @@ function SettingsContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setSuccess("Şifreniz başarıyla güncellendi.");
+      setSuccess(t.password_updated);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      setError(err.message || "Bir hata oluştu.");
+      setError(err.message || t.error_generic);
     } finally {
       setLoading(false);
     }
@@ -131,10 +134,10 @@ function SettingsContent() {
               </div>
             </Link>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-              Ayarlar
+              {t.title}
             </h1>
           </div>
-          <p className="text-slate-500 font-medium pl-16">Profilini ve güvenlik tercihlerini yönet.</p>
+          <p className="text-slate-500 font-medium pl-16">{t.subtitle}</p>
         </div>
       </header>
 
@@ -145,13 +148,13 @@ function SettingsContent() {
             onClick={() => { setActiveTab("profile"); setError(""); setSuccess(""); }}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === "profile" ? "bg-white text-[var(--primary)] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
-            <User size={18} /> Profil
+            <User size={18} /> {t.profile_tab}
           </button>
           <button
             onClick={() => { setActiveTab("security"); setError(""); setSuccess(""); }}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === "security" ? "bg-white text-[var(--primary)] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
-            <Lock size={18} /> Güvenlik
+            <Lock size={18} /> {t.security_tab}
           </button>
         </div>
 
@@ -189,7 +192,7 @@ function SettingsContent() {
                 </div>
                 
                 <div className="flex flex-col items-center gap-2">
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Profil Rengi Seç</p>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{t.avatar_color}</p>
                   <div className="flex gap-2">
                     {AVATAR_COLORS.map(color => (
                       <button
@@ -206,7 +209,7 @@ function SettingsContent() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">İsim Soyisim</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">{t.name_label}</label>
                   <input
                     type="text"
                     value={name}
@@ -217,7 +220,7 @@ function SettingsContent() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">E-Posta Adresi</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">{t.email_label}</label>
                   <input
                     type="email"
                     value={email}
@@ -234,14 +237,14 @@ function SettingsContent() {
                 className="w-full bg-[var(--primary)] text-white font-bold py-4 rounded-2xl mt-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                Değişiklikleri Kaydet
+                {t.save_changes}
               </button>
             </form>
           ) : (
             <form onSubmit={handleUpdatePassword} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-5">
               
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Mevcut Şifre</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">{t.current_password}</label>
                 <input
                   type="password"
                   value={currentPassword}
@@ -254,7 +257,7 @@ function SettingsContent() {
               <div className="h-px bg-slate-100 my-2"></div>
               
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Yeni Şifre</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">{t.new_password}</label>
                 <input
                   type="password"
                   value={newPassword}
@@ -266,7 +269,7 @@ function SettingsContent() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Yeni Şifre (Tekrar)</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">{t.confirm_password}</label>
                 <input
                   type="password"
                   value={confirmPassword}
@@ -283,7 +286,7 @@ function SettingsContent() {
                 className="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl mt-4 flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 {loading ? <Loader2 size={20} className="animate-spin" /> : <Lock size={20} />}
-                Şifreyi Güncelle
+                {t.update_password}
               </button>
             </form>
           )}

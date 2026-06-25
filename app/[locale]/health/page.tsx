@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 export default function HealthDashboard() {
   const [activeTab, setActiveTab] = useState("calories");
@@ -28,6 +29,9 @@ export default function HealthDashboard() {
   // AI Report
   const [aiReport, setAiReport] = useState("");
   const [loadingReport, setLoadingReport] = useState(false);
+
+  const dict = useDictionary();
+  const t = dict.health;
 
   const [analyzingFood, setAnalyzingFood] = useState(false);
 
@@ -154,9 +158,9 @@ export default function HealthDashboard() {
   const sortedDates = Object.keys(groupedLogs).sort((a, b) => b.localeCompare(a));
 
   const tabs = [
-    { id: "calories", label: "Calories" },
-    { id: "weight", label: "Weight" },
-    { id: "dietitian", label: "Dietitian" },
+    { id: "calories", label: t.calories },
+    { id: "weight", label: t.weight },
+    { id: "dietitian", label: t.dietitian },
   ];
 
   return (
@@ -175,14 +179,14 @@ export default function HealthDashboard() {
                 </div>
               </Link>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-                My Health
+                {t.title}
               </h1>
             </div>
             <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center shadow-inner">
               <HeartPulse size={20} />
             </div>
           </div>
-          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">Track your nutrition, weight, and get AI insights.</p>
+          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">{t.subtitle}</p>
         </div>
       </header>
 
@@ -229,7 +233,7 @@ export default function HealthDashboard() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
                 
                 <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-700">
-                  <Apple size={22} className="text-[var(--primary)]"/> Today's Intake
+                  <Apple size={22} className="text-[var(--primary)]"/> {t.today_intake}
                 </h2>
                 
                 <div className="flex items-end justify-between mb-4">
@@ -256,15 +260,15 @@ export default function HealthDashboard() {
               <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-3">
                 <span className="text-lg">⚠️</span>
                 <div className="text-xs text-amber-800 font-medium leading-relaxed">
-                  <strong className="block mb-0.5 font-bold">Aylık Sıfırlama Uyarısı</strong>
-                  Kalori loglarınız her ay başında otomatik olarak sıfırlanır. Veritabanında sadece içinde bulunulan ayın başından itibaren olan kayıtlar saklanır.
+                  <strong className="block mb-0.5 font-bold">{t.reset_warning_title}</strong>
+                  {t.reset_warning_desc}
                 </div>
               </div>
 
               {/* Log Food Card */}
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-bold text-slate-700 text-lg">Log Food</h3>
+                  <h3 className="font-bold text-slate-700 text-lg">{t.log_food}</h3>
                   <div className="relative z-20">
                     <div 
                       onClick={() => setIsMealTypeDropdownOpen(!isMealTypeDropdownOpen)}
@@ -300,7 +304,7 @@ export default function HealthDashboard() {
                 
                 <form onSubmit={addCalorieLog} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-600 mb-1.5 ml-1">Log Tarihi</label>
+                    <label className="block text-sm font-bold text-slate-600 mb-1.5 ml-1">{t.log_date}</label>
                     <DatePicker 
                       value={logDate} 
                       onChange={setLogDate} 
@@ -308,7 +312,7 @@ export default function HealthDashboard() {
                   </div>
                   <input 
                     type="text" 
-                    placeholder="Food Name (e.g. Avocado Toast)" 
+                    placeholder={t.food_name_placeholder} 
                     value={foodName} 
                     onChange={e => setFoodName(e.target.value)} 
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-transparent transition-all font-medium text-slate-700 placeholder:text-slate-400" 
@@ -318,7 +322,7 @@ export default function HealthDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <input 
                       type="number" 
-                      placeholder="Calories" 
+                      placeholder={t.calories} 
                       value={calories} 
                       onChange={e => setCalories(e.target.value)} 
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-transparent transition-all font-bold text-slate-700 placeholder:text-slate-400" 
@@ -331,23 +335,23 @@ export default function HealthDashboard() {
                       className="w-full bg-rose-50 text-rose-500 rounded-2xl px-5 py-4 font-bold shadow-sm hover:bg-rose-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {analyzingFood ? <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div> : <Wand2 size={18} />}
-                      Auto Value
+                      {t.auto_value}
                     </button>
                   </div>
                   <button type="submit" className="w-full bg-[var(--primary)] text-white rounded-2xl py-4 font-black shadow-lg shadow-[var(--primary)]/20 hover:bg-[var(--primary)]/90 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                    <Plus size={20} /> Add to Log
+                    <Plus size={20} /> {t.add_to_log}
                   </button>
                 </form>
               </div>
 
               {/* History List */}
               <div className="space-y-6 pt-4">
-                <h3 className="font-black text-slate-700 text-lg px-2">Yemek Geçmişi (Bu Ay)</h3>
+                <h3 className="font-black text-slate-700 text-lg px-2">{t.food_history}</h3>
                 
                 {sortedDates.length === 0 ? (
                   <div className="bg-white rounded-[2rem] p-8 text-center border border-dashed border-slate-200 flex flex-col items-center justify-center">
                     <Apple size={32} className="text-slate-300 mb-3" />
-                    <p className="text-slate-500 font-medium">Bu ay henüz yemek logu girilmemiş.</p>
+                    <p className="text-slate-500 font-medium">{t.no_logs_month}</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -372,7 +376,7 @@ export default function HealthDashboard() {
                               {formattedDate}
                             </span>
                             <span className="text-xs font-black text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
-                              Toplam: {dayTotal} kcal
+                              {t.total}: {dayTotal} kcal
                             </span>
                           </div>
                           
@@ -416,7 +420,7 @@ export default function HealthDashboard() {
                <div className="bg-gradient-to-br from-[var(--primary)] to-rose-400 rounded-[2rem] p-8 shadow-lg text-center relative overflow-hidden text-white">
                  <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
                  <Scale size={40} className="mx-auto text-white/80 mb-4" />
-                 <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">Current Weight</h2>
+                 <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">{t.current_weight}</h2>
                  <p className="text-6xl font-black">{currentWeight || "--"}<span className="text-2xl text-white/60 ml-2">kg</span></p>
                </div>
 
@@ -432,18 +436,18 @@ export default function HealthDashboard() {
                    required 
                  />
                  <button type="submit" className="bg-[var(--primary)] text-white rounded-xl px-6 py-3 font-bold shadow-md hover:bg-[var(--primary)]/90 transition-all flex justify-center items-center gap-2">
-                   Save <ArrowRight size={18} />
+                   {t.save} <ArrowRight size={18} />
                  </button>
                </form>
 
                {/* Weight History */}
                <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
                  <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
-                   <TrendingUp size={20} className="text-[var(--primary)]" /> Weight History
+                   <TrendingUp size={20} className="text-[var(--primary)]" /> {t.weight_history}
                  </h3>
                  <div className="space-y-4">
                    {weightLogs.length === 0 ? (
-                     <p className="text-slate-400 text-center text-sm font-medium">No weight data available.</p>
+                     <p className="text-slate-400 text-center text-sm font-medium">{t.no_weight_data}</p>
                    ) : (
                      weightLogs.slice().reverse().map((log, i) => (
                        <div key={log.id} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 group">
@@ -480,9 +484,9 @@ export default function HealthDashboard() {
                   <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-6 border border-white/20">
                     <BrainCircuit size={40} className="text-violet-300" />
                   </div>
-                  <h2 className="text-3xl font-black mb-3">AI Dietitian</h2>
+                  <h2 className="text-3xl font-black mb-3">{t.ai_dietitian}</h2>
                   <p className="text-slate-300 font-medium mb-8 leading-relaxed">
-                    Get a personalized analysis of your diet and weight trends over the last 30 days.
+                    {t.ai_dietitian_desc}
                   </p>
                   <button 
                     onClick={generateReport} 
@@ -491,11 +495,11 @@ export default function HealthDashboard() {
                   >
                     {loadingReport ? (
                       <>
-                        <Loader2 size={22} className="animate-spin" /> Analyzing...
+                        <Loader2 size={22} className="animate-spin" /> {t.analyzing}
                       </>
                     ) : (
                       <>
-                        <Sparkles size={22} className="text-violet-500" /> Generate Monthly Report
+                        <Sparkles size={22} className="text-violet-500" /> {t.generate_report}
                       </>
                     )}
                   </button>
