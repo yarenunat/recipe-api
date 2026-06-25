@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   title: "Recipe AI",
   description: "Your magic recipe generator and cooking assistant",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Recipe AI",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/icon-192x192.png",
+  },
 };
 
 export default function RootLayout({
