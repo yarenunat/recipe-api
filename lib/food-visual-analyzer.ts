@@ -37,87 +37,44 @@ export async function analyzeFoodVisuals(
     .map((i) => `${i.quantity} ${i.name}`)
     .join(", ");
 
-  // Only use the first 6 steps so the prompt doesn't blow up
-  const instructionText = recipe.instructions.slice(0, 6).join(" → ");
+  const analysisPrompt = `You are a professional food photographer. Write a single, highly detailed English prompt for an AI image generator (like Midjourney/Flux) to create a photorealistic, mouth-watering image of this exact dish.
 
-  const analysisPrompt = `You are a professional food photographer, Michelin-star chef, and culinary visual specialist.
+Recipe: ${recipe.title}
+Ingredients: ${ingredientList}
 
-Your task: Analyze the recipe data below and produce a HYPER-ACCURATE visual analysis of what the FINISHED, COOKED dish looks like.
-Base your analysis primarily on the INGREDIENTS and COOKING METHOD — NOT the dish name alone.
+RULES:
+1. Describe the final cooked dish in extreme detail (colors, textures, plating).
+2. If it is a known cultural dish, rely on your knowledge of how it TRULY looks.
+3. Keep it under 60 words. No key-value pairs, just a descriptive paragraph.
+4. Add "Professional food photography, 8k resolution, natural lighting, highly realistic." at the end.
+5. NEVER mention logos, text, or brands.
 
-════════════ RECIPE DATA ════════════
-Title        : ${recipe.title}
-Description  : ${recipe.description || "(none)"}
-Cuisine      : ${recipe.cuisineType || "Unknown"}
-Ingredients  : ${ingredientList}
-Key Steps    : ${instructionText}
-Temperature  : ${recipe.temperature || "N/A"}
-Cook time    : ${recipe.cookingTime ? `${recipe.cookingTime} min` : "N/A"}
-═════════════════════════════════════
-
-════════════ VISUAL ANALYSIS RULES ════════════
-1. Describe the FINAL COOKED DISH appearance only — not raw ingredients.
-2. Ingredients + cooking steps OVERRIDE the title if they conflict.
-3. Specify exact COLORS (e.g. "deep amber", "golden-brown crust", "pale green"), TEXTURES (e.g. "crispy edges", "glossy sauce", "fluffy interior"), and SHAPE/FORM.
-4. Describe how ingredients relate to each other (e.g. "sucuk slices embedded in egg", "vegetables mixed throughout").
-5. Specify the exact VESSEL/PLATING (e.g. cast-iron pan, copper pan, white ceramic plate, wooden board, bowl).
-6. For Turkish dishes: use authentic traditional presentation.
-7. The food_photography_prompt must be DENSE and SCENE-LEVEL: describe the dish foreground, background surface, lighting angle, and atmosphere.
-8. NEVER mention brand names, logos, text labels, bottles with labels, or any packaging.
-9. NEVER include general props like "a chef". Focus on THE DISH ONLY.
-════════════════════════════════════════════════
-
-════════════ TURKISH DISH VISUAL REFERENCE ════════════
-Sucuklu Yumurta : round sucuk slices EMBEDDED INTO set egg white with runny orange yolk, orange-red sausage oil pooling, in black cast-iron pan
-Menemen         : loose wet scramble of tomato chunks + diced green peppers + egg all mixed together, in copper or terracotta pan, steam rising
-Mercimek Çorbası: smooth velvety orange/red soup in a ceramic bowl, swirl of red paprika butter on top, croutons on side
-Lahmacun        : ultra-thin round flatbread, topped with dark minced meat mixture, flat and crispy, NOT pizza
-Gözleme         : thin golden-brown folded flatbread, press marks visible, cheese/spinach filling at edges, on a wooden board
-Mantı           : tiny steamed dumplings in bowl, drenched in thick white garlic yogurt, dark red paprika-butter drizzled on top
-Kebap/Şiş       : charred skewered meat with dark grill marks, served on flatbread with tomato and pepper on the side
-Baklava         : golden diamond-shaped layered pastry squares glistening with honey syrup, crushed pistachios scattered on top
-Mercimek Köftesi: oblong dark-reddish bulgur and lentil patties on a flat plate, fresh parsley and lemon wedge on side
-Pilav           : fluffy white or yellow rice, each grain separate, light steam, served in a wide shallow bowl
-════════════════════════════════════════════════════════
-
-════════════ CONFIDENCE SCORING ════════════
-90-100: Fully certain — clear ingredient list + clear cooking method
-70-89 : Mostly confident — minor ambiguity in plating
-50-69 : Moderate — vague recipe or unusual combination
-<50   : Low — title and ingredients conflict heavily
-════════════════════════════════════════════
-
-Return ONLY this JSON (no markdown, no extra text):
+Return ONLY a JSON object with this exact structure:
 {
-  "dish_name": "Precise English name of the actual final dish",
-  "visual_description": "3-4 sentences describing exact colors, textures, shapes, how ingredients look in the finished dish",
-  "main_visible_ingredients": ["each ingredient as it looks in the finished dish"],
-  "plating_style": "Exact serving vessel + arrangement (e.g. black cast-iron skillet, white ceramic plate with side garnish)",
-  "food_photography_prompt": "DENSE scene-level prompt for AI image generator: foreground dish details (colors, textures, steam, sauce), background surface (e.g. dark slate, worn wood, white marble), lighting (e.g. soft side natural light, warm candlelight), camera angle (45-degree or top-down), overall mood. NEVER include brand names, logos, text, labels, or bottles.",
-  "visualConfidenceScore": 90
+  "food_photography_prompt": "your dense descriptive prompt here"
 }`;
-
 
   try {
     const result = await generateText({
       model: getModel(provider),
       prompt: analysisPrompt,
-      maxOutputTokens: 800,
+      maxOutputTokens: 300,
     });
 
     const match = result.text.match(/\{[\s\S]*\}/);
     const cleaned = match ? match[0] : result.text;
+    const json = JSON.parse(cleaned);
 
-    const analysis: FoodVisualAnalysis = JSON.parse(cleaned);
-
-    // Validate score is a number
-    if (typeof analysis.visualConfidenceScore !== "number") {
-      analysis.visualConfidenceScore = 75;
-    }
-
-    return analysis;
+    return {
+      dish_name: recipe.title,
+      visual_description: "",
+      main_visible_ingredients: [],
+      plating_style: "",
+      food_photography_prompt: json.food_photography_prompt,
+      visualConfidenceScore: 100,
+    };
   } catch (err) {
-    console.error("Food visual analysis failed, using fallback:", err);
+    console.error("Food visual analysis failed:", err);
     return buildFallbackAnalysis(recipe);
   }
 }
@@ -127,15 +84,12 @@ Return ONLY this JSON (no markdown, no extra text):
 ───────────────────────────────────────────── */
 
 function buildFallbackAnalysis(recipe: RecipeInput): FoodVisualAnalysis {
-  const ingNames = recipe.ingredients.map((i) => i.name.toLowerCase());
-  const visibleIngs = recipe.ingredients.slice(0, 6).map((i) => `${i.quantity} ${i.name}`);
-
   return {
     dish_name: recipe.title,
-    visual_description: `A ${recipe.cuisineType || "homemade"} dish featuring ${ingNames.slice(0, 3).join(", ")}, cooked and plated in traditional style.`,
-    main_visible_ingredients: visibleIngs,
-    plating_style: "Served on a white ceramic plate with restaurant-style presentation",
-    food_photography_prompt: `Close-up of ${recipe.title}. Visible ingredients: ${ingNames.slice(0, 6).join(", ")}. ${recipe.cuisineType ? `${recipe.cuisineType} cuisine.` : ""} Authentic presentation, natural lighting, appetizing, 8K detail.`,
+    visual_description: "",
+    main_visible_ingredients: [],
+    plating_style: "",
+    food_photography_prompt: `Professional food photography of a dish called ${recipe.title}, featuring ${recipe.ingredients.slice(0, 3).map(i => i.name).join(", ")}. Authentic presentation, natural lighting, highly realistic, 8k resolution.`,
     visualConfidenceScore: 45,
   };
 }
@@ -145,47 +99,6 @@ function buildFallbackAnalysis(recipe: RecipeInput): FoodVisualAnalysis {
 ───────────────────────────────────────────── */
 
 export function buildImageUrl(analysis: FoodVisualAnalysis): string {
-  const {
-    dish_name,
-    visual_description,
-    main_visible_ingredients,
-    plating_style,
-    food_photography_prompt,
-    visualConfidenceScore,
-  } = analysis;
-
-  let finalPrompt: string;
-
-  if (visualConfidenceScore >= 70) {
-    // Full structured prompt — high confidence
-    finalPrompt = `Professional food photography.
-
-Dish: ${dish_name}
-
-Visual appearance:
-${visual_description}
-
-Visible ingredients on plate:
-${main_visible_ingredients.join(", ")}
-
-Serving style:
-${plating_style}
-
-Photography details:
-${food_photography_prompt}
-
-Natural lighting. Highly realistic. Restaurant quality. Top-down or 45-degree angle. High detail textures. Authentic cultural presentation. Absolutely NO TEXT, NO LOGOS, NO WATERMARKS, NO BOTTLE LABELS, NO BRANDING on any ingredients or dishware.`;
-  } else {
-    // Low confidence — ignore title completely, describe only from ingredients
-    finalPrompt = `Professional food photography. Do NOT interpret this as any specific named dish.
-
-Ingredients visible in the dish:
-${main_visible_ingredients.join(", ")}
-
-${food_photography_prompt}
-
-Natural lighting. Highly realistic. Restaurant quality. Top-down or 45-degree angle. High detail textures. Absolutely NO TEXT, NO LOGOS, NO WATERMARKS, NO BOTTLE LABELS, NO BRANDING on any ingredients or dishware.`;
-  }
-
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=800&height=800&nologo=true&model=flux&seed=${Math.floor(Math.random() * 9999)}`;
+  const finalPrompt = analysis.food_photography_prompt + " NO TEXT, NO LOGOS, NO WATERMARKS.";
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=800&height=800&nologo=true&model=flux&seed=${Math.floor(Math.random() * 99999)}`;
 }

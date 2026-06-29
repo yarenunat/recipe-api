@@ -47,10 +47,21 @@ Tips: ${JSON.stringify(tipsArray)}
     const { text } = await generateText({
       model: getModel("groq"),
       prompt,
+      maxOutputTokens: 2000,
     });
 
     const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-    const parsed = JSON.parse(cleaned);
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        throw new Error("Could not extract JSON from response");
+      }
+    }
 
     return NextResponse.json(parsed);
   } catch (error) {

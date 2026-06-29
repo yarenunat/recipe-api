@@ -4,6 +4,7 @@ import { getModel } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
 import { recipeSchema } from "../generate/route";
 import { auth } from "@/auth";
+import { analyzeFoodVisuals, buildImageUrl } from "@/lib/food-visual-analyzer";
 
 export async function POST(req: Request) {
   try {
@@ -25,38 +26,97 @@ export async function POST(req: Request) {
     };
     const targetLanguage = languageNames[locale] || "Turkish";
 
-    const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
+    const systemInstruction = `You are a world-class professional chef. Create a delicious, creative recipe using primarily the given ingredients.
+
+Return ONLY a raw valid JSON object (no markdown, no extra text):
 {
-  "title": "Recipe name in ${targetLanguage}",
-  "description": "Short appetizing description in ${targetLanguage}",
-  "imagePrompt": "A highly detailed English visual description of the FINISHED dish for an AI image generator. CRITICAL INSTRUCTIONS: 1. DO NOT rely on foreign food names alone. You MUST describe their exact physical geometry and texture in English. 2. Never describe raw ingredients. Describe exact shape, texture, crispiness, and plating.",
-  "ingredients": [{ "name": "ingredient in ${targetLanguage}", "quantity": "amount/quantity in ${targetLanguage}" }],
-  "instructions": ["Step 1 in ${targetLanguage}...", "Step 2 in ${targetLanguage}..."],
-  "cookingTime": 20,
-  "prepTime": 10,
-  "totalTime": 30,
+  "title": "Dish name in ${targetLanguage}",
+  "description": "2-3 sentence appetizing description in ${targetLanguage}",
+  "imagePrompt": "English-only. Describe the final cooked dish visually: color, texture, plating. No logos or text.",
+  "ingredients": [{ "name": "ingredient in ${targetLanguage}", "quantity": "exact amount with unit" }],
+  "instructions": ["Step 1: Short single action.", "Step 2: Another action.", "...10-20 steps"],
+  "cookingTime": 25,
+  "prepTime": 15,
+  "totalTime": 40,
   "servings": 4,
-  "calories": 400,
-  "difficultyLevel": "Difficulty level in ${targetLanguage}",
+  "calories": 350,
+  "difficultyLevel": "Easy",
   "cuisineType": "Cuisine type in ${targetLanguage}",
-  "temperature": "Cooking temperature (e.g., 180°C)",
+  "temperature": "180°C",
   "tips": ["Tip 1 in ${targetLanguage}", "Tip 2 in ${targetLanguage}"]
 }
 
-CRITICAL: All user-visible text (title, description, ingredients name & quantity, instructions, difficultyLevel, cuisineType, tips) MUST be written in ${targetLanguage}. Do not output any language other than ${targetLanguage} for these fields. The imagePrompt field MUST remain in English.`;
+RULES:
+1. Use primarily the listed ingredients. You may add basic staples (salt, pepper, oil, water).
+2. Each instruction step = ONE single action. Use 10-20 short steps.
+3. difficultyLevel MUST be exactly "Easy", "Medium", or "Hard" (English).
+4. ALL fields except difficultyLevel and imagePrompt MUST be in ${targetLanguage}.
+5. Output PURE JSON only. No markdown.`;
 
     const { text } = await generateText({
       model: getModel(provider),
-      prompt: `You are an expert chef. The user has the following ingredients in their pantry: ${ingredients.join(", ")}. 
-Create a delicious, creative recipe that PRIMARY uses these ingredients. You may include basic pantry staples (salt, pepper, oil, water, basic spices) but DO NOT add major new ingredients (like meat or vegetables) that the user didn't list.
-
-${systemInstruction}`
+      prompt: `The user has: ${ingredients.join(", ")}.\n\n${systemInstruction}`,
+      maxOutputTokens: 3000,
     });
 
-    const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-    const parsed = recipeSchema.parse(JSON.parse(cleaned));
+    // ── Robust JSON repair for truncated/malformed AI output ──
+    function repairJson(raw: string): string {
+      let s = raw.trim();
+      s = s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const objMatch = s.match(/\{[\s\S]*\}/);
+      if (objMatch) s = objMatch[0];
+      try { JSON.parse(s); return s; } catch {}
+      let braces = 0, brackets = 0, inString = false, escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === '{') braces++;
+        if (c === '}') braces--;
+        if (c === '[') brackets++;
+        if (c === ']') brackets--;
+      }
+      if (inString) s += '"';
+      s = s.replace(/,\s*$/, '');
+      while (brackets > 0) { s += ']'; brackets--; }
+      while (braces > 0) { s += '}'; braces--; }
+      return s;
+    }
 
-    // Wait, the client can just use the returned object and then save it, but we can also save it here directly.
+    const repaired = repairJson(text);
+    const rawJson = JSON.parse(repaired);
+
+    // Sanitize numeric fields
+    const numericFields = ["cookingTime", "prepTime", "totalTime", "servings", "calories"] as const;
+    for (const field of numericFields) {
+      const val = rawJson[field];
+      if (val !== undefined && val !== null) {
+        const n = typeof val === "number" ? val : parseFloat(String(val).replace(/[^0-9.]/g, ""));
+        rawJson[field] = isNaN(n) ? undefined : n;
+      }
+    }
+
+    const parsed = recipeSchema.parse(rawJson);
+
+    // Use the Food Visual Analyzer for accurate image generation
+    const visualAnalysis = await analyzeFoodVisuals(
+      {
+        title: parsed.title,
+        description: parsed.description,
+        ingredients: parsed.ingredients,
+        instructions: parsed.instructions,
+        cuisineType: parsed.cuisineType,
+        temperature: parsed.temperature,
+        cookingTime: parsed.cookingTime,
+        prepTime: parsed.prepTime,
+      },
+      provider
+    );
+
+    const imageUrl = buildImageUrl(visualAnalysis);
+
     const savedRecipe = await prisma.recipe.create({
       data: {
         userId: session?.user?.id || null,
@@ -85,8 +145,8 @@ ${systemInstruction}`
         },
         images: {
           create: [{
-            url: `https://image.pollinations.ai/prompt/${encodeURIComponent("professional cinematic food photography. " + (parsed.imagePrompt || parsed.title) + ", 4k resolution, highly detailed, realistic, appetizing, culinary magazine style, perfectly plated, natural lighting")}?width=800&height=800&nologo=true`,
-            prompt: parsed.imagePrompt || parsed.title
+            url: imageUrl,
+            prompt: visualAnalysis.food_photography_prompt,
           }]
         }
       }

@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const provider = (searchParams.get("provider") || "groq") as AIProvider;
     const cuisine = searchParams.get("cuisine");
     const locale = searchParams.get("locale") || "tr";
-    
+
     const localeToLanguage: Record<string, string> = {
       en: "English",
       tr: "Turkish",
@@ -23,40 +23,79 @@ export async function GET(req: Request) {
     };
     const targetLanguage = localeToLanguage[locale] || "Turkish";
 
-    const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
+    const systemInstruction = `Return ONLY a raw valid JSON object (no markdown, no extra text):
 {
-  "title": "Recipe name (in ${targetLanguage})",
-  "description": "Short appetizing description (in ${targetLanguage})",
-  "imagePrompt": "Brief one-sentence visual description of the finished dish (in English, for the image generator)",
-  "ingredients": [{ "name": "ingredient (in ${targetLanguage})", "quantity": "amount with unit (in ${targetLanguage})" }],
-  "instructions": ["Step 1... (in ${targetLanguage})", "Step 2... (in ${targetLanguage})"],
-  "cookingTime": 20,
-  "prepTime": 10,
-  "totalTime": 30,
+  "title": "Recipe name in ${targetLanguage}",
+  "description": "2-3 sentence appetizing description in ${targetLanguage}",
+  "imagePrompt": "English-only. Describe the finished dish visually: color, texture, plating. No logos or text.",
+  "ingredients": [{ "name": "ingredient in ${targetLanguage}", "quantity": "exact amount with unit" }],
+  "instructions": ["Step 1: Short single action.", "Step 2: Another action.", "...10-20 steps"],
+  "cookingTime": 25,
+  "prepTime": 15,
+  "totalTime": 40,
   "servings": 4,
-  "calories": 400,
-  "difficultyLevel": "Easy", // MUST BE EXACTLY "Easy", "Medium", or "Hard" in English
+  "calories": 350,
+  "difficultyLevel": "Easy",
   "cuisineType": "${cuisine ? cuisine : "Global"}",
   "temperature": "180°C",
   "tips": ["Tip 1", "Tip 2"]
 }
-CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${targetLanguage}!`;
+RULES:
+1. Each instruction step = ONE single action. Use 10-20 short steps.
+2. difficultyLevel MUST be exactly "Easy", "Medium", or "Hard" (English).
+3. ALL fields except difficultyLevel and imagePrompt MUST be in ${targetLanguage}.
+4. Output PURE JSON only. No markdown.`;
 
     const promptText = cuisine
-      ? `You are an expert chef. Generate a highly creative, authentic, and mouth-watering ${cuisine} recipe. The cuisine MUST be strictly ${cuisine}. Surprise me with a unique or classic dish from this region!\n\n${systemInstruction}`
-      : `You are an expert chef. Generate a completely random, highly creative, and mouth-watering recipe. Surprise me with something unique, perhaps a fusion dish or a forgotten classic!\n\n${systemInstruction}`;
+      ? `You are an expert chef. Generate a creative, authentic ${cuisine} recipe.\n\n${systemInstruction}`
+      : `You are an expert chef. Generate a completely random, creative recipe. Surprise me!\n\n${systemInstruction}`;
 
     const { text } = await generateText({
       model: getModel(provider),
       prompt: promptText,
+      maxOutputTokens: 3000,
     });
 
-    const cleaned = text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-    const parsed = recipeSchema.parse(JSON.parse(cleaned));
+    // ── Robust JSON repair for truncated/malformed AI output ──
+    function repairJson(raw: string): string {
+      let s = raw.trim();
+      s = s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const objMatch = s.match(/\{[\s\S]*\}/);
+      if (objMatch) s = objMatch[0];
+      try { JSON.parse(s); return s; } catch {}
+      let braces = 0, brackets = 0, inString = false, escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === '{') braces++;
+        if (c === '}') braces--;
+        if (c === '[') brackets++;
+        if (c === ']') brackets--;
+      }
+      if (inString) s += '"';
+      s = s.replace(/,\s*$/, '');
+      while (brackets > 0) { s += ']'; brackets--; }
+      while (braces > 0) { s += '}'; braces--; }
+      return s;
+    }
+
+    const repaired = repairJson(text);
+    const rawJson = JSON.parse(repaired);
+
+    // Sanitize numeric fields
+    const numericFields = ["cookingTime", "prepTime", "totalTime", "servings", "calories"] as const;
+    for (const field of numericFields) {
+      const val = rawJson[field];
+      if (val !== undefined && val !== null) {
+        const n = typeof val === "number" ? val : parseFloat(String(val).replace(/[^0-9.]/g, ""));
+        rawJson[field] = isNaN(n) ? undefined : n;
+      }
+    }
+
+    const parsed = recipeSchema.parse(rawJson);
 
     // Use the Food Visual Analyzer for accurate image generation
     const visualAnalysis = await analyzeFoodVisuals(

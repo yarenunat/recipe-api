@@ -13,6 +13,7 @@ export const recipeSchema = z.object({
   title: z.string(),
   description: z.string(),
   imagePrompt: z.string().optional(),
+  imageUrl: z.string().optional(),
   ingredients: z.array(
     z.object({
       name: z.string(),
@@ -25,12 +26,27 @@ export const recipeSchema = z.object({
   totalTime: z.coerce.number().optional(),
   servings: z.coerce.number().optional(),
   calories: z.coerce.number().optional(),
-  difficultyLevel: z.enum(["Easy", "Medium", "Hard"]).optional(),
+  difficultyLevel: z.preprocess((val) => {
+    if (typeof val !== "string") return "Easy";
+    const map: Record<string, string> = {
+      "kolay": "Easy", "orta": "Medium", "zor": "Hard",
+      "fácil": "Easy", "medio": "Medium", "difícil": "Hard",
+      "easy": "Easy", "medium": "Medium", "hard": "Hard",
+    };
+    return map[val.toLowerCase()] || "Easy";
+  }, z.enum(["Easy", "Medium", "Hard"])).optional(),
   cuisineType: z.string().optional(),
-  temperature: z.string().optional(),
-  ovenTemp: z.string().optional(),
+  temperature: z.preprocess((val) => {
+    if (val === null || val === undefined) return undefined;
+    return String(val);
+  }, z.string().optional()),
+  ovenTemp: z.preprocess((val) => {
+    if (val === null || val === undefined) return undefined;
+    return String(val);
+  }, z.string().optional()),
   tips: z.array(z.string()).optional(),
 });
+
 
 /* ─── POST /api/recipes/generate ─────────────────────────── */
 
@@ -71,55 +87,40 @@ export async function POST(req: Request) {
     }
 
     if (isUrl) {
-      // Social media: use bot User-Agents that receive OG tags (including captions)
-      const userAgents = isSocialMedia
-        ? [
-            "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
-            "Googlebot/2.1 (+http://www.google.com/bot.html)",
-            "Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)",
-          ]
-        : ["Mozilla/5.0 (compatible; RecipeBot/1.0)"];
-
       let scraped = false;
 
-      for (const ua of userAgents) {
-        try {
-          const response = await fetch(trimmedUrl, {
-            headers: { "User-Agent": ua },
-          });
-          const html = await response.text();
-          const $ = cheerio.load(html);
-
-          const ogImage =
-            $('meta[property="og:image"]').attr("content") ||
-            $('meta[name="twitter:image"]').attr("content");
-
-          if (ogImage) {
-            sourceImageUrl = ogImage.startsWith("http")
-              ? ogImage
-              : new URL(ogImage, new URL(trimmedUrl).origin).href;
+      try {
+        const mlRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(trimmedUrl)}`);
+        const mlData = await mlRes.json();
+        
+        if (mlData.status === 'success' && mlData.data) {
+          const title = mlData.data.title || '';
+          const desc = mlData.data.description || '';
+          const imageUrl = mlData.data.image?.url || '';
+          
+          if (imageUrl) {
+            sourceImageUrl = imageUrl;
+          }
+          
+          let textContent = `Başlık: ${title}\nİçerik/Açıklama: ${desc}`;
+          
+          // If it's a blog (not social media), we can also try to fetch the raw text content
+          // but Microlink's title/desc is usually enough for recipes.
+          if (!isSocialMedia && !desc && !title) {
+             const response = await fetch(trimmedUrl);
+             const html = await response.text();
+             const $ = cheerio.load(html);
+             $("script, style, noscript, iframe, img, svg").remove();
+             textContent = $("body").text().replace(/\s+/g, " ").trim().slice(0, 5000);
           }
 
-          const ogDescription =
-            $('meta[property="og:description"]').attr("content") || "";
-          const ogTitle = $('meta[property="og:title"]').attr("content") || "";
-
-          let textContent = "";
-          if (isSocialMedia) {
-            textContent = [ogTitle, ogDescription].filter(Boolean).join("\n").trim();
-          } else {
-            $("script, style, noscript, iframe, img, svg").remove();
-            textContent = $("body").text().replace(/\s+/g, " ").trim().slice(0, 5000);
-          }
-
-          if (textContent.length > 50) {
+          if (textContent.length > 10) {
             llmInput = `Generate a detailed recipe based on the following content from a social media post or website. Extract ingredients and steps if explicitly mentioned, otherwise create an authentic recipe for the dish described.\n\nContent: ${textContent}`;
             scraped = true;
-            break;
           }
-        } catch (err) {
-          console.error(`Fetch failed with User-Agent ${ua}:`, err);
         }
+      } catch (err) {
+        console.error("Microlink scraping error:", err);
       }
 
       if (!scraped) {
@@ -225,33 +226,67 @@ Return ONLY a raw valid JSON object (no markdown code blocks, no extra text, no 
       text = fallbackResult.text;
     }
 
-    const cleaned = text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
+    // ── Robust JSON repair for truncated/malformed AI output ──
+    function repairJson(raw: string): string {
+      let s = raw.trim();
+      // Remove markdown fences
+      s = s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      // Extract JSON object if surrounded by extra text
+      const objMatch = s.match(/\{[\s\S]*\}/);
+      if (objMatch) s = objMatch[0];
 
-    // Basic JSON repair for common truncation
-    let jsonString = cleaned;
-    if (!jsonString.endsWith("}")) {
-      const lastQuote = jsonString.lastIndexOf('"');
-      if (lastQuote > 0) {
-        jsonString = jsonString.substring(0, lastQuote + 1);
-        jsonString += ']}';
+      // If JSON is complete, return as-is
+      try { JSON.parse(s); return s; } catch {}
+
+      // Count open/close brackets to detect truncation
+      let braces = 0, brackets = 0, inString = false, escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (escaped) { escaped = false; continue; }
+        if (c === '\\') { escaped = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === '{') braces++;
+        if (c === '}') braces--;
+        if (c === '[') brackets++;
+        if (c === ']') brackets--;
       }
+
+      // If we're truncated inside a string, close the string
+      if (inString) {
+        s += '"';
+      }
+
+      // Remove trailing comma
+      s = s.replace(/,\s*$/, '');
+
+      // Close any open brackets/braces
+      while (brackets > 0) { s += ']'; brackets--; }
+      while (braces > 0) { s += '}'; braces--; }
+
+      return s;
+    }
+
+    function sanitizeNumericFields(obj: any) {
+      const fields = ["cookingTime", "prepTime", "totalTime", "servings", "calories"];
+      for (const field of fields) {
+        const val = obj[field];
+        if (val !== undefined && val !== null) {
+          const n = typeof val === "number" ? val : parseFloat(String(val).replace(/[^0-9.]/g, ""));
+          obj[field] = isNaN(n) ? undefined : n;
+        }
+      }
+      return obj;
     }
 
     let parsed;
     try {
-      parsed = recipeSchema.parse(JSON.parse(cleaned));
+      const repaired = repairJson(text);
+      const rawJson = sanitizeNumericFields(JSON.parse(repaired));
+      parsed = recipeSchema.parse(rawJson);
     } catch (parseError: any) {
-      console.error("Failed to parse JSON. Raw text:", text);
-      try {
-        // Fallback with repair
-        parsed = recipeSchema.parse(JSON.parse(jsonString));
-      } catch (repairError: any) {
-        throw new Error(`JSON Parse Error: ${parseError.message}. Raw Output: ${text.slice(0, 100)}...`);
-      }
+      console.error("Failed to parse JSON. Raw text:", text.slice(0, 500));
+      throw new Error(`JSON Parse Error: ${parseError.message}. Raw Output: ${text.slice(0, 100)}...`);
     }
 
     /* ── Step 3: Food Visual Analyzer ── */
@@ -275,7 +310,9 @@ Return ONLY a raw valid JSON object (no markdown code blocks, no extra text, no 
       `[Visual Analyzer] confidence=${visualAnalysis.visualConfidenceScore} dish="${visualAnalysis.dish_name}"`
     );
 
-    const imageUrl = buildImageUrl(visualAnalysis);
+    // Eğer URL'den (Instagram vs) kazınmış gerçek bir fotoğraf varsa onu kullan.
+    // Yoksa yapay zeka ile profesyonel bir fotoğraf üret.
+    const imageUrl = sourceImageUrl || buildImageUrl(visualAnalysis);
 
     /* ── Step 4: Persist to database ── */
 

@@ -84,9 +84,12 @@ TAHMİN ZORUNLULUĞU (ÇOK ÖNEMLİ): Eğer metinde yemeğin "Hazırlama Süresi
 
     const parsedData = JSON.parse(content);
 
-    // Orijinal görselde video play ikonu vs. olabildiği için HER ZAMAN Yapay Zeka ile tertemiz bir görsel oluştur
-    const prompt = `${parsedData.title || "delicious food"} aesthetic beautiful highly detailed food photography, top down view, soft warm lighting, 4k, gourmet, delicious`;
-    parsedData.imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&nologo=true`;
+    // Eğer URL'den (Instagram vs) çekilmiş gerçek bir fotoğraf varsa onu kullanıyoruz. 
+    // Yoksa (kullanıcı sadece metin girdiyse vs.) yapay zeka ile görsel üretiyoruz.
+    if (!parsedData.imageUrl || parsedData.imageUrl.trim() === "") {
+      const prompt = `${parsedData.title || "delicious food"} aesthetic beautiful highly detailed food photography, top down view, soft warm lighting, 4k, gourmet, delicious`;
+      parsedData.imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&nologo=true`;
+    }
 
     return NextResponse.json(parsedData, { headers: corsHeaders });
 
