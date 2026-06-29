@@ -52,13 +52,14 @@ export async function PATCH(req: Request) {
 
     // Handle Password
     if (newPassword) {
-      if (!currentPassword) {
-        return NextResponse.json({ error: "Mevcut şifrenizi girmelisiniz." }, { status: 400 });
-      }
-
-      const isValid = await bcrypt.compare(currentPassword, user.password || "");
-      if (!isValid && user.password) { // If user.password is null, they signed up with OAuth
-        return NextResponse.json({ error: "Mevcut şifre yanlış." }, { status: 400 });
+      if (user.password) {
+        if (!currentPassword) {
+          return NextResponse.json({ error: "Mevcut şifrenizi girmelisiniz." }, { status: 400 });
+        }
+        const isValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isValid) {
+          return NextResponse.json({ error: "Mevcut şifre yanlış." }, { status: 400 });
+        }
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);

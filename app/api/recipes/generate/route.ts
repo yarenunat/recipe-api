@@ -20,11 +20,11 @@ export const recipeSchema = z.object({
     })
   ),
   instructions: z.array(z.string()),
-  cookingTime: z.number().optional(),
-  prepTime: z.number().optional(),
-  totalTime: z.number().optional(),
-  servings: z.number().optional(),
-  calories: z.number().optional(),
+  cookingTime: z.coerce.number().optional(),
+  prepTime: z.coerce.number().optional(),
+  totalTime: z.coerce.number().optional(),
+  servings: z.coerce.number().optional(),
+  calories: z.coerce.number().optional(),
   difficultyLevel: z.enum(["Easy", "Medium", "Hard"]).optional(),
   cuisineType: z.string().optional(),
   temperature: z.string().optional(),
@@ -147,24 +147,42 @@ export async function POST(req: Request) {
     };
     const targetLanguage = localeToLanguage[locale] || "Turkish";
 
-    const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text). Keep all text concise to avoid truncation:
+    const systemInstruction = `You are a world-class professional chef and culinary writer. Your task is to generate a PERFECT, AUTHENTIC recipe in ${targetLanguage}.
+
+Return ONLY a raw valid JSON object (no markdown code blocks, no extra text, no explanation). Use this exact structure:
 {
-  "title": "Recipe name (in ${targetLanguage})",
-  "description": "Short appetizing description (max 2 sentences, in ${targetLanguage})",
-  "imagePrompt": "Brief one-sentence visual description of the finished dish (in English, for the image generator)",
-  "ingredients": [{ "name": "ingredient (in ${targetLanguage})", "quantity": "amount with unit (in ${targetLanguage})" }],
-  "instructions": ["Step 1... (in ${targetLanguage})", "Step 2... (in ${targetLanguage})"],
-  "cookingTime": 20,
-  "prepTime": 10,
-  "totalTime": 30,
+  "title": "Exact dish name in ${targetLanguage}",
+  "description": "2-3 sentence appetizing description highlighting flavor, texture, and cultural significance. (in ${targetLanguage})",
+  "imagePrompt": "English-only. Describe ONLY the final cooked dish's visual appearance: its color, texture, plating style, and key visible ingredients. NEVER mention logos, text, or branding.",
+  "ingredients": [
+    { "name": "ingredient name", "quantity": "exact realistic amount with unit" }
+  ],
+  "instructions": [
+    "Step 1: One single short action. (e.g. Dice 1 onion into 0.5cm cubes.)",
+    "Step 2: Another single short action. (e.g. Heat 2 tbsp olive oil in a pan over medium heat.)",
+    "...use 10 to 20 steps total, each covering ONLY ONE action"
+  ],
+  "cookingTime": 25,
+  "prepTime": 15,
+  "totalTime": 40,
   "servings": 4,
-  "calories": 400,
-  "difficultyLevel": "Easy", // MUST BE EXACTLY "Easy", "Medium", or "Hard" in English
+  "calories": 350,
+  "difficultyLevel": "Easy",
   "cuisineType": "Turkish",
   "temperature": "180°C",
-  "tips": ["Tip 1", "Tip 2"]
+  "tips": ["One practical culinary tip.", "Another useful tip."]
 }
-CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${targetLanguage}!`;
+
+══════════ ABSOLUTE RULES ══════════
+1. INGREDIENTS must be REALISTIC and COMPLETE. Include every ingredient actually needed. Use proper quantities (e.g. "2 adet soğan", "1 çay kaşığı tuz"). No vague amounts.
+2. INSTRUCTIONS: Each step = ONE single physical action. NEVER merge boiling + draining + frying into one step. Use 10-20 separate short steps.
+3. EACH instruction step should be 1-2 short sentences max. Include a sensory cue (color, smell, texture) where natural.
+4. imagePrompt must describe the FINISHED DISH ONLY, based on how it would look from its ingredients and cooking method. Must be in English.
+5. difficultyLevel MUST be exactly "Easy", "Medium", or "Hard" (English only).
+6. ALL fields except difficultyLevel and imagePrompt MUST be in ${targetLanguage}.
+7. Output PURE JSON only. Do NOT wrap in markdown. Do NOT use unescaped double quotes inside string values.
+══════════════════════════════════`;
+
 
     let messages: any[] = [];
     if (sourceImageUrl) {
@@ -194,7 +212,7 @@ CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${ta
       const result = await generateText({
         model: getModel(sourceImageUrl ? "vision" : provider),
         messages,
-        maxOutputTokens: 4000,
+        maxOutputTokens: 3000,
       });
       text = result.text;
     } catch (err) {
@@ -202,7 +220,7 @@ CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${ta
       const fallbackResult = await generateText({
         model: getModel(provider),
         prompt: `Generate a detailed recipe based on the following input: "${llmInput}".\n\n${systemInstruction}`,
-        maxOutputTokens: 4000,
+        maxOutputTokens: 3000,
       });
       text = fallbackResult.text;
     }
@@ -213,12 +231,27 @@ CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${ta
       .replace(/```\s*$/i, "")
       .trim();
 
+    // Basic JSON repair for common truncation
+    let jsonString = cleaned;
+    if (!jsonString.endsWith("}")) {
+      const lastQuote = jsonString.lastIndexOf('"');
+      if (lastQuote > 0) {
+        jsonString = jsonString.substring(0, lastQuote + 1);
+        jsonString += ']}';
+      }
+    }
+
     let parsed;
     try {
       parsed = recipeSchema.parse(JSON.parse(cleaned));
     } catch (parseError: any) {
       console.error("Failed to parse JSON. Raw text:", text);
-      throw new Error(`JSON Parse Error: ${parseError.message}. Raw Output: ${text.slice(0, 100)}...`);
+      try {
+        // Fallback with repair
+        parsed = recipeSchema.parse(JSON.parse(jsonString));
+      } catch (repairError: any) {
+        throw new Error(`JSON Parse Error: ${parseError.message}. Raw Output: ${text.slice(0, 100)}...`);
+      }
     }
 
     /* ── Step 3: Food Visual Analyzer ── */
