@@ -123,6 +123,32 @@ export async function POST(req: Request) {
         console.error("Microlink scraping error:", err);
       }
 
+      // ── Fallback if Microlink failed or didn't return text ──
+      if (!scraped && !isSocialMedia) {
+        try {
+          const response = await fetch(trimmedUrl, {
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; RecipeBot/1.0)" },
+          });
+          const html = await response.text();
+          const $ = cheerio.load(html);
+          
+          const ogImage = $('meta[property="og:image"]').attr("content") || $('meta[name="twitter:image"]').attr("content") || $('img').first().attr('src');
+          if (ogImage) {
+             sourceImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, new URL(trimmedUrl).origin).href;
+          }
+          
+          $("script, style, noscript, iframe, img, svg").remove();
+          const textContent = $("body").text().replace(/\s+/g, " ").trim().slice(0, 5000);
+          
+          if (textContent.length > 50) {
+            llmInput = `Generate a detailed recipe based on the following content from a website. Extract ingredients and steps if explicitly mentioned, otherwise create an authentic recipe for the dish described.\n\nContent: ${textContent}`;
+            scraped = true;
+          }
+        } catch (err) {
+          console.error("Fallback scraping error:", err);
+        }
+      }
+
       if (!scraped) {
         try {
           const urlObj = new URL(trimmedUrl);
