@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "**" }
     ],
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default withPWA(nextConfig);

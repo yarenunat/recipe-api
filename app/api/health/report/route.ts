@@ -49,7 +49,7 @@ Recent Food Log Summary:
       dataSummary += "No food logged in the last 30 days.\n";
     } else {
       // Group by date to show daily totals
-      const dailyTotals = calorieLogs.reduce((acc: any, log) => {
+      const dailyTotals = calorieLogs.reduce((acc: any, log: any) => {
         const d = log.date.toISOString().split('T')[0];
         if (!acc[d]) acc[d] = { cals: 0, foods: [] };
         acc[d].cals += log.calories;
