@@ -4,10 +4,22 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Book, ChevronLeft, Plus, Image as ImageIcon, Flame, Clock } from "lucide-react";
 import { motion } from "framer-motion";
+import { useParams } from "next/navigation";
+import { useDictionary } from "@/components/DictionaryProvider";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
 
 export default function MyRecipesPage() {
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
+  const dict = useDictionary();
+  const t = dict.my_recipes;
+
   const [recipes, setRecipes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const titlesToTranslate = recipes.map(r => r.title);
+  const translatedTitles = useTranslationCache(titlesToTranslate, locale);
+  const getTranslatedTitle = (index: number) => translatedTitles[index] || recipes[index]?.title;
 
   useEffect(() => {
     fetchMyRecipes();
@@ -40,7 +52,7 @@ export default function MyRecipesPage() {
               </div>
             </Link>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <Book size={24} className="text-[var(--primary)]" /> Tarif Defterim
+              <Book size={24} className="text-[var(--primary)]" /> {t.title}
             </h1>
           </div>
           <Link href="/my-recipes/new">
@@ -49,7 +61,7 @@ export default function MyRecipesPage() {
             </button>
           </Link>
         </div>
-        <p className="text-slate-500 font-medium relative z-10">Kendi tariflerinizi burada listeleyip düzenleyebilirsiniz.</p>
+        <p className="text-slate-500 font-medium relative z-10">{t.subtitle}</p>
       </header>
 
       <main className="p-6">
@@ -64,11 +76,11 @@ export default function MyRecipesPage() {
             <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-6">
               <Book size={40} className="text-slate-300" />
             </div>
-            <h3 className="text-xl font-bold text-slate-700 mb-2">Henüz Tarif Yok</h3>
-            <p className="text-slate-500 font-medium mb-8 max-w-[250px]">Kendi tarif defteriniz boş. Yeni bir tarif ekleyerek başlayın!</p>
+            <h3 className="text-xl font-bold text-slate-700 mb-2">{t.no_recipes_title}</h3>
+            <p className="text-slate-500 font-medium mb-8 max-w-[250px]">{t.no_recipes_desc}</p>
             <Link href="/my-recipes/new">
               <button className="bg-[var(--primary)] text-white rounded-full py-4 px-8 font-bold shadow-lg shadow-[var(--primary)]/20 flex items-center gap-2 hover:-translate-y-1 transition-transform">
-                <Plus size={20} /> Yeni Tarif Ekle
+                <Plus size={20} /> {t.add_new_button}
               </button>
             </Link>
           </div>
@@ -84,19 +96,19 @@ export default function MyRecipesPage() {
                 >
                   <div className="h-48 relative bg-slate-100">
                     {recipe.images && recipe.images.length > 0 ? (
-                      <img src={recipe.images[0].url} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={recipe.images[0].url} alt={getTranslatedTitle(idx)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                         <ImageIcon size={32} className="mb-2 opacity-50" />
-                        <span className="text-xs font-medium uppercase tracking-wider">No Image</span>
+                        <span className="text-xs font-medium uppercase tracking-wider">{t.no_image}</span>
                       </div>
                     )}
                     <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-slate-700 shadow-sm flex items-center gap-1">
-                      <Book size={12} className="text-[var(--primary)]" /> Custom
+                      <Book size={12} className="text-[var(--primary)]" /> {t.custom_tag}
                     </div>
                   </div>
                   <div className="p-5">
-                    <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-1">{recipe.title}</h3>
+                    <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-1">{getTranslatedTitle(idx)}</h3>
                     {recipe.description && (
                       <p className="text-sm text-slate-500 line-clamp-2 mb-4">{recipe.description}</p>
                     )}

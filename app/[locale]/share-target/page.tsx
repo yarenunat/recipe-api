@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 function ShareTargetContent() {
- const searchParams = useSearchParams();
- const router = useRouter();
- const [status, setStatus] = useState("Analyzing shared content...");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const params = useParams();
+  const dict = useDictionary();
+  const t = dict.share_target;
+  const [status, setStatus] = useState(t.analyzing);
 
  useEffect(() => {
  const title = searchParams.get("title") || "";
@@ -16,14 +20,14 @@ function ShareTargetContent() {
 
  const fullText = `${title} ${text} ${url}`.trim();
 
- if (fullText) {
- setStatus("Extracting recipe details...");
- setTimeout(() => {
- setStatus("Generating magic recipe...");
- setTimeout(() => {
- router.push("/");
- }, 2000);
- }, 1500);
+  if (fullText) {
+    setStatus(t.extracting);
+    setTimeout(() => {
+      setStatus(t.generating);
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
+    }, 1500);
  } else {
  router.push("/");
  }

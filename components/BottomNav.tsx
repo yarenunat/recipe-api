@@ -22,10 +22,23 @@ const navItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  
+  // Resolve active locale from path
+  const segments = pathname.split('/');
+  const currentLocale = ['tr', 'en', 'zh', 'hi', 'es'].includes(segments[1]) ? segments[1] : '';
+
+  const getLocalizedHref = (href: string) => {
+    if (!currentLocale) return href;
+    if (href === "/") return `/${currentLocale}`;
+    return `/${currentLocale}${href}`;
+  };
 
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/" || /^\/[a-z]{2}$/.test(pathname);
-    return pathname.includes(href);
+    const localizedHref = getLocalizedHref(href);
+    if (href === "/") {
+      return pathname === `/${currentLocale}` || pathname === "/";
+    }
+    return pathname.startsWith(localizedHref);
   };
 
   return (
@@ -43,7 +56,7 @@ export default function BottomNav() {
       {navItems.map(({ href, icon: Icon, label }) => {
         const active = isActive(href);
         return (
-          <Link key={href} href={href} className="relative flex flex-col items-center justify-center w-10 h-10 group">
+          <Link key={href} href={getLocalizedHref(href)} className="relative flex flex-col items-center justify-center w-10 h-10 group">
             {/* Pill indicator */}
             <AnimatePresence>
               {active && (

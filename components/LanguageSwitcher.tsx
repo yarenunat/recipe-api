@@ -25,8 +25,14 @@ export default function LanguageSwitcher() {
     setIsOpen(false);
     if (code === currentLocale) return;
 
-    // Replace the locale part of the pathname
-    const newPathname = pathname.replace(`/${currentLocale}`, `/${code}`);
+    // Split pathname into segments and replace the locale segment safely
+    const segments = pathname.split('/');
+    if (languages.some(lang => lang.code === segments[1])) {
+      segments[1] = code;
+    } else {
+      segments.splice(1, 0, code);
+    }
+    const newPathname = segments.join('/');
     router.push(newPathname);
   };
 

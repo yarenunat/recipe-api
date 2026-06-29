@@ -4,8 +4,8 @@ import RecipePageClient from "./RecipePageClient";
 
 export const revalidate = 60;
 
-export default async function RecipePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function RecipePage({ params }: { params: Promise<{ id: string; locale: string }> }) {
+  const { id, locale } = await params;
 
   const recipe = await prisma.recipe.findUnique({
     where: { id },
@@ -19,6 +19,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
     notFound();
   }
 
+  // Parse original instructions
   let instructions: string[] = [];
   try {
     instructions = JSON.parse(recipe.instructions as string);
@@ -28,5 +29,18 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
     }
   }
 
-  return <RecipePageClient recipe={recipe} instructions={instructions} />;
+  // Parse original tips
+  let tipsArray: string[] = [];
+  if (recipe.tips) {
+    try {
+      tipsArray = JSON.parse(recipe.tips);
+    } catch (e) {
+      if (typeof recipe.tips === "string") {
+        tipsArray = [recipe.tips];
+      }
+    }
+  }
+
+  // Pass the raw recipe, instructions and locale. Client component will handle translation if needed.
+  return <RecipePageClient recipe={recipe} instructions={instructions} locale={locale} />;
 }

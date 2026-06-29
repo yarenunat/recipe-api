@@ -4,8 +4,11 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 export default function DeleteRecipeButton({ id }: { id: string }) {
+  const dict = useDictionary();
+  const t = dict.components;
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const router = useRouter();
@@ -17,10 +20,10 @@ export default function DeleteRecipeButton({ id }: { id: string }) {
       if (res.ok) {
         router.push("/saved");
       } else {
-        alert("Tarif silinemedi.");
+        alert(t.delete_error);
       }
     } catch (e) {
-      alert("Bir hata oluştu.");
+      alert(t.error_generic);
     } finally {
       setLoading(false);
     }
@@ -37,10 +40,10 @@ export default function DeleteRecipeButton({ id }: { id: string }) {
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Tarifi Sil"
-        message="Bu tarifi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
-        confirmLabel="Evet, Sil"
-        cancelLabel="Vazgeç"
+        title={t.confirm_delete_title}
+        message={t.confirm_delete_msg}
+        confirmLabel={t.confirm_yes}
+        cancelLabel={t.confirm_no}
         variant="danger"
         onConfirm={() => { setConfirmOpen(false); handleDelete(); }}
         onCancel={() => setConfirmOpen(false)}

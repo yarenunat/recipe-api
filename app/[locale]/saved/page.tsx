@@ -7,11 +7,19 @@ import { useAppStore } from "@/store/useAppStore";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useDictionary } from "@/components/DictionaryProvider";
+import { useParams } from "next/navigation";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
 
 export default function SavedRecipesPage() {
   const { recipes, isRecipesLoaded, fetchRecipes, setRecipes } = useAppStore();
   const dict = useDictionary();
   const t = dict.saved;
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
+  
+  const titlesToTranslate = recipes.map((r: any) => r.title);
+  const translatedTitles = useTranslationCache(titlesToTranslate, locale);
+  const getTranslatedTitle = (index: number) => translatedTitles[index] || recipes[index]?.title;
   
   const [activeTab, setActiveTab] = useState<"recipes" | "collections">("recipes");
   const [collections, setCollections] = useState<any[]>([]);
@@ -199,19 +207,19 @@ export default function SavedRecipesPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pb-8">
-                    {recipes.map((recipe) => (
+                    {recipes.map((recipe, index) => (
                       <Link href={`/recipe/${recipe.id}`} key={recipe.id}>
                         <div className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer group flex flex-col h-full relative">
                           <div className="relative w-full h-48 bg-slate-100 overflow-hidden">
                             <div className="absolute inset-0 bg-white/20 z-10 group-hover:bg-transparent transition-colors"></div>
                             <img 
                               src={recipe.images?.[0]?.url || "https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=800&auto=format&fit=crop"} 
-                              alt={recipe.title} 
+                              alt={getTranslatedTitle(index)} 
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                           </div>
                           <div className="p-5 flex-1 flex flex-col">
-                            <h3 className="text-lg font-bold text-slate-700 leading-tight mb-2 line-clamp-2 pr-8">{recipe.title}</h3>
+                            <h3 className="text-lg font-bold text-slate-700 leading-tight mb-2 line-clamp-2 pr-8">{getTranslatedTitle(index)}</h3>
                             <div className="flex gap-4 mt-auto pt-4">
                               <div className="flex items-center gap-1 text-slate-500 text-sm font-medium">
                                 <Clock size={16} className="text-[var(--primary)]" />

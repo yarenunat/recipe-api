@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { ShoppingCart, Check } from "lucide-react";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 export default function ClientShoppingButton({ ingredients }: { ingredients: any[] }) {
+  const dict = useDictionary();
+  const t = dict.cooking;
   const [added, setAdded] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +39,7 @@ export default function ClientShoppingButton({ ingredients }: { ingredients: any
       className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all ${added ? 'bg-emerald-500 text-white' : 'bg-white text-[var(--primary)] border border-slate-200 hover:bg-slate-50'}`}
     >
       {added ? <Check size={18} /> : <ShoppingCart size={18} />}
-      {added ? "Added to List" : "Add All to List"}
+      {added ? t.added_to_list : t.add_all_to_list}
     </button>
   );
 }

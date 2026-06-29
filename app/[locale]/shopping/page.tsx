@@ -1,5 +1,8 @@
 "use client";
 
+import { useParams } from "next/navigation";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, CheckCircle2, Circle, Trash2, Plus, Sparkles, Loader2, ChevronLeft } from "lucide-react";
@@ -163,6 +166,28 @@ export default function ShoppingPage() {
     return "🛒";
   };
 
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
+
+  // Gather strings to translate
+  const listNames = lists.map(l => l.name);
+  const ingredientNames = lists.flatMap(l => l.items.map((i: any) => i.ingredient?.name || ""));
+  const allStringsToTranslate = [...listNames, ...ingredientNames];
+  
+  const translatedStrings = useTranslationCache(allStringsToTranslate, locale);
+
+  const getTranslatedListName = (listIndex: number) => {
+    return translatedStrings[listIndex] || lists[listIndex].name;
+  };
+
+  const getTranslatedItemName = (listIndex: number, itemIndex: number) => {
+    let offset = lists.length;
+    for (let i = 0; i < listIndex; i++) {
+      offset += lists[i].items.length;
+    }
+    return translatedStrings[offset + itemIndex] || lists[listIndex].items[itemIndex].ingredient?.name;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center pb-24">
@@ -208,12 +233,12 @@ export default function ShoppingPage() {
             <p className="text-slate-400 text-sm max-w-[200px] font-medium">{t.no_lists_desc}</p>
           </motion.div>
         ) : (
-          lists.map((list) => (
+          lists.map((list, listIndex) => (
             <motion.div key={list.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 overflow-hidden relative">
               <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-4">
                 <h2 className="text-xl font-bold text-slate-700 capitalize flex items-center gap-2">
                   <Sparkles size={18} className="text-[var(--primary)]" />
-                  {list.name}
+                  {getTranslatedListName(listIndex)}
                 </h2>
                 <button onClick={() => setDeleteListConfirm(list.id)} className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-400 hover:bg-rose-100 hover:text-rose-500 transition-colors">
                   <Trash2 size={18} />
@@ -240,7 +265,7 @@ export default function ShoppingPage() {
               </div>
 
               <div className="space-y-3">
-                {list.items.map((item: any) => (
+                {list.items.map((item: any, itemIndex: number) => (
                   <div key={item.id} onClick={() => toggleItem(list.id, item.id, item.isChecked)} className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border ${item.isChecked ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'}`}>
                     <div className={`flex-shrink-0 transition-colors ${item.isChecked ? 'text-[var(--primary)]' : 'text-slate-300'}`}>
                       {item.isChecked ? <CheckCircle2 size={24} className="fill-[var(--primary)] text-white" /> : <Circle size={24} />}
@@ -249,7 +274,7 @@ export default function ShoppingPage() {
                       {item.ingredient?.icon?.url?.replace('emoji:', '') || getIngredientEmoji(item.ingredient?.name || "")}
                     </div>
                     <div className={`flex-1 transition-all ${item.isChecked ? 'opacity-50 line-through text-slate-400' : 'text-slate-700'}`}>
-                      <p className="font-semibold capitalize text-[15px]">{item.ingredient?.name}</p>
+                      <p className="font-semibold capitalize text-[15px]">{getTranslatedItemName(listIndex, itemIndex)}</p>
                       {item.quantity && <p className="text-xs text-slate-400 mt-0.5">{item.quantity} {item.unit}</p>}
                     </div>
                   </div>

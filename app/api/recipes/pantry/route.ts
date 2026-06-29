@@ -14,23 +14,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ingredients array is required" }, { status: 400 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const locale = searchParams.get("locale") || "tr";
+    const languageNames: Record<string, string> = {
+      tr: "Turkish",
+      en: "English",
+      es: "Spanish",
+      zh: "Chinese (Simplified)",
+      hi: "Hindi",
+    };
+    const targetLanguage = languageNames[locale] || "Turkish";
+
     const systemInstruction = `Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
 {
-  "title": "Recipe name",
-  "description": "Short appetizing description",
+  "title": "Recipe name in ${targetLanguage}",
+  "description": "Short appetizing description in ${targetLanguage}",
   "imagePrompt": "A highly detailed English visual description of the FINISHED dish for an AI image generator. CRITICAL INSTRUCTIONS: 1. DO NOT rely on foreign food names alone. You MUST describe their exact physical geometry and texture in English. 2. Never describe raw ingredients. Describe exact shape, texture, crispiness, and plating.",
-  "ingredients": [{ "name": "ingredient", "quantity": "amount" }],
-  "instructions": ["Step 1...", "Step 2..."],
+  "ingredients": [{ "name": "ingredient in ${targetLanguage}", "quantity": "amount/quantity in ${targetLanguage}" }],
+  "instructions": ["Step 1 in ${targetLanguage}...", "Step 2 in ${targetLanguage}..."],
   "cookingTime": 20,
   "prepTime": 10,
   "totalTime": 30,
   "servings": 4,
   "calories": 400,
-  "difficultyLevel": "Easy",
-  "cuisineType": "Global",
-  "temperature": "180°C",
-  "tips": ["Tip 1", "Tip 2"]
-}`;
+  "difficultyLevel": "Difficulty level in ${targetLanguage}",
+  "cuisineType": "Cuisine type in ${targetLanguage}",
+  "temperature": "Cooking temperature (e.g., 180°C)",
+  "tips": ["Tip 1 in ${targetLanguage}", "Tip 2 in ${targetLanguage}"]
+}
+
+CRITICAL: All user-visible text (title, description, ingredients name & quantity, instructions, difficultyLevel, cuisineType, tips) MUST be written in ${targetLanguage}. Do not output any language other than ${targetLanguage} for these fields. The imagePrompt field MUST remain in English.`;
 
     const { text } = await generateText({
       model: getModel(provider),
@@ -60,7 +73,7 @@ ${systemInstruction}`
         temperature: parsed.temperature,
         tips: parsed.tips ? JSON.stringify(parsed.tips) : null,
         ingredients: {
-          create: parsed.ingredients.map(ing => ({
+          create: Array.from(new Map(parsed.ingredients.map(ing => [ing.name.toLowerCase().trim(), ing])).values()).map((ing: any) => ({
             quantity: ing.quantity,
             ingredient: {
               connectOrCreate: {

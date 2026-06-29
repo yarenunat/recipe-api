@@ -262,7 +262,7 @@ CRITICAL: ALL text values except difficultyLevel and imagePrompt MUST be in ${ta
         temperature: parsed.temperature,
         tips: parsed.tips ? JSON.stringify(parsed.tips) : null,
         ingredients: {
-          create: parsed.ingredients.map((ing) => ({
+          create: Array.from(new Map(parsed.ingredients.map(ing => [ing.name.toLowerCase().trim(), ing])).values()).map((ing: any) => ({
             quantity: ing.quantity,
             ingredient: {
               connectOrCreate: {

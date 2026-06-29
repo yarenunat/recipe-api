@@ -5,6 +5,7 @@ import { MoreVertical, Trash2, Pencil, X, Plus, Minus, Image as ImageIcon, Check
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 interface Ingredient {
   id?: string;
@@ -26,6 +27,9 @@ interface Recipe {
 }
 
 export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
+  const dict = useDictionary();
+  const t = dict.components;
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -71,10 +75,10 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
       if (res.ok) {
         router.push("/");
       } else {
-        alert("Tarif silinemedi.");
+        alert(t.delete_error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      alert(t.error_generic);
     } finally {
       setDeleting(false);
     }
@@ -99,10 +103,10 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
         setEditOpen(false);
         router.refresh();
       } else {
-        alert("Kaydedilemedi. Lütfen tekrar deneyin.");
+        alert(t.save_error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      alert(t.error_generic);
     } finally {
       setSaving(false);
     }
@@ -124,7 +128,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      alert("Resim 3MB'dan küçük olmalıdır.");
+      alert(t.image_size_error);
       return;
     }
     const reader = new FileReader();
@@ -158,7 +162,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                   className="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 text-sm font-semibold transition-colors"
                 >
                   <Pencil size={16} className="text-[var(--primary)]" />
-                  Düzenle
+                  {t.edit}
                 </button>
                 <div className="h-px bg-slate-100 mx-2" />
                 <button
@@ -166,7 +170,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                   className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 text-sm font-semibold transition-colors"
                 >
                   <Trash2 size={16} />
-                  Sil
+                  {t.delete}
                 </button>
               </motion.div>
             )}
@@ -196,7 +200,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
               <div className="flex-shrink-0 pt-3 pb-2 px-6">
                 <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-4" />
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-slate-800">Tarifi Düzenle</h2>
+                  <h2 className="text-2xl font-black text-slate-800">{t.edit_recipe_title}</h2>
                   <button
                     onClick={() => setEditOpen(false)}
                     className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-300 transition-colors"
@@ -209,7 +213,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
               <form onSubmit={handleSave} className="overflow-y-auto flex-1 px-6 pb-32 space-y-6">
                 {/* Title */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Başlık</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.title_label}</label>
                   <input
                     type="text"
                     value={title}
@@ -221,7 +225,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Açıklama</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.description_label}</label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -234,7 +238,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                     <ImageIcon size={12} className="inline mr-1" />
-                    Tarif Fotoğrafı
+                    {t.recipe_photo_label}
                   </label>
 
                   {/* Hidden file input */}
@@ -259,14 +263,14 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                           onClick={() => fileInputRef.current?.click()}
                           className="bg-white text-slate-700 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-slate-100"
                         >
-                          <Camera size={16} /> Değiştir
+                          <Camera size={16} /> {t.change}
                         </button>
                         <button
                           type="button"
                           onClick={() => setImageUrl("")}
                           className="bg-white text-red-500 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-50"
                         >
-                          <X size={16} /> Kaldır
+                          <X size={16} /> {t.remove}
                         </button>
                       </div>
                     </div>
@@ -277,15 +281,15 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                       className="w-full h-36 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-[var(--primary)]/40 hover:text-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all"
                     >
                       <Camera size={28} />
-                      <span className="text-sm font-semibold">Fotoğraf Seç</span>
-                      <span className="text-xs">JPG, PNG — maks 3MB</span>
+                      <span className="text-sm font-semibold">{t.choose_photo}</span>
+                      <span className="text-xs">{t.photo_formats}</span>
                     </button>
                   )}
                 </div>
 
                 {/* Ingredients */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Malzemeler</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{dict.recipe.ingredients}</label>
                   <div className="space-y-2">
                     {ingredients.map((ing, i) => (
                       <div key={i} className="flex gap-2 items-center">
@@ -293,14 +297,14 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                           type="text"
                           value={ing.quantity}
                           onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
-                          placeholder="Miktar"
+                          placeholder={t.quantity_label}
                           className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 text-sm font-bold transition-all"
                         />
                         <input
                           type="text"
                           value={ing.name}
                           onChange={(e) => updateIngredient(i, "name", e.target.value)}
-                          placeholder="Malzeme adı"
+                          placeholder={dict.new_recipe.ingredient_placeholder}
                           className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 text-sm font-medium transition-all"
                         />
                         <button
@@ -318,13 +322,13 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                     onClick={addIngredient}
                     className="mt-3 flex items-center gap-2 text-sm font-bold text-[var(--primary)] hover:opacity-70 transition-opacity"
                   >
-                    <Plus size={16} /> Malzeme Ekle
+                    <Plus size={16} /> {dict.new_recipe.add_ingredient_button}
                   </button>
                 </div>
 
                 {/* Instructions */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Yapılış Adımları</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{dict.new_recipe.section_instructions}</label>
                   <div className="space-y-3">
                     {instructions.map((step, i) => (
                       <div key={i} className="flex gap-2 items-start">
@@ -352,7 +356,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                     onClick={addStep}
                     className="mt-3 flex items-center gap-2 text-sm font-bold text-[var(--primary)] hover:opacity-70 transition-opacity"
                   >
-                    <Plus size={16} /> Adım Ekle
+                    <Plus size={16} /> {t.step_add_button}
                   </button>
                 </div>
 
@@ -367,7 +371,7 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
                   ) : (
                     <Check size={22} />
                   )}
-                  {saving ? "Kaydediliyor..." : "Kaydet"}
+                  {saving ? t.saving : dict.new_recipe.save_button}
                 </button>
               </form>
             </motion.div>
@@ -377,10 +381,10 @@ export default function RecipeOptionsMenu({ recipe }: { recipe: Recipe }) {
 
       <ConfirmDialog
         open={deleteConfirmOpen}
-        title="Tarifi Sil"
-        message="Bu tarifi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
-        confirmLabel="Evet, Sil"
-        cancelLabel="Vazgeç"
+        title={t.confirm_delete_title}
+        message={t.confirm_delete_msg}
+        confirmLabel={t.confirm_yes}
+        cancelLabel={t.confirm_no}
         variant="danger"
         onConfirm={() => { setDeleteConfirmOpen(false); handleDelete(); }}
         onCancel={() => setDeleteConfirmOpen(false)}

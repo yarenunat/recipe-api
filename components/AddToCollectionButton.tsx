@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Bookmark, Check, FolderOpen, Plus, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 interface Collection {
   id: string;
@@ -11,6 +12,9 @@ interface Collection {
 }
 
 export default function AddToCollectionButton({ recipeId }: { recipeId: string }) {
+  const dict = useDictionary();
+  const t = dict.components;
+
   const [modalOpen, setModalOpen] = useState(false);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -105,7 +109,7 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
       <button
         onClick={() => setModalOpen(true)}
         className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-sm hover:bg-white transition-colors text-slate-700 border border-slate-100"
-        title="Koleksiyona Ekle"
+        title={t.add_to_collection_title}
       >
         <Bookmark size={20} />
       </button>
@@ -130,7 +134,7 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
               <div className="flex-shrink-0 pt-3 pb-4 px-6 border-b border-slate-100">
                 <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4" />
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-slate-800">Koleksiyona Ekle</h2>
+                  <h2 className="text-2xl font-black text-slate-800">{t.add_to_collection_title}</h2>
                   <button
                     onClick={() => setModalOpen(false)}
                     className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
@@ -154,7 +158,7 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
                         className="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 hover:border-[var(--primary)]/40 hover:text-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all font-semibold"
                       >
                         <Plus size={20} />
-                        Yeni Koleksiyon Oluştur
+                        {t.create_collection_button}
                       </button>
                     ) : (
                       <form onSubmit={handleCreateAndAdd} className="flex gap-2">
@@ -162,7 +166,7 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
                           type="text"
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
-                          placeholder="Koleksiyon adı"
+                          placeholder={t.collection_name_placeholder}
                           autoFocus
                           className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                         />
@@ -172,7 +176,7 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
                           className="px-4 py-3 bg-[var(--primary)] text-white rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center gap-1"
                         >
                           {creating ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                          Ekle
+                          {t.add_button}
                         </button>
                         <button
                           type="button"
@@ -187,8 +191,8 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
                     {collections.length === 0 && !creatingNew && (
                       <div className="text-center py-8 text-slate-400">
                         <FolderOpen size={40} className="mx-auto mb-3 text-slate-300" />
-                        <p className="font-medium">Henüz koleksiyonunuz yok.</p>
-                        <p className="text-sm mt-1">Yukarıdan bir tane oluşturun!</p>
+                        <p className="font-medium">{t.no_collections_title}</p>
+                        <p className="text-sm mt-1">{t.no_collections_desc}</p>
                       </div>
                     )}
 
@@ -220,7 +224,7 @@ export default function AddToCollectionButton({ recipeId }: { recipeId: string }
                               {col.name}
                             </p>
                             <p className="text-xs text-slate-400 mt-0.5">
-                              {isAdded ? "Eklendi ✓" : `${col.recipes?.length || 0} tarif`}
+                              {isAdded ? t.added_success : `${col.recipes?.length || 0} ${t.recipes_count}`}
                             </p>
                           </div>
                         </button>

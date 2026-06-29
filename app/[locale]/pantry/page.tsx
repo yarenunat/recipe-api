@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Sparkles, Plus, X, Refrigerator, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDictionary } from "@/components/DictionaryProvider";
@@ -32,6 +32,8 @@ const COMMON_INGREDIENTS = [
 
 export default function PantryPage() {
   const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [customIngredient, setCustomIngredient] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,7 +65,7 @@ export default function PantryPage() {
     if (ingredients.length === 0) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/recipes/pantry", {
+      const res = await fetch(`/api/recipes/pantry?locale=${locale}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ingredients, provider: "groq" }),
@@ -72,7 +74,7 @@ export default function PantryPage() {
       const data = await res.json();
       router.push(`/recipe/${data.id}`);
     } catch (error) {
-      alert("Error generating recipe from pantry.");
+      alert(t.alert_generate_failed || "Error generating recipe from pantry.");
       setLoading(false);
     }
   };
@@ -122,7 +124,7 @@ export default function PantryPage() {
                 >
                   <span className="text-3xl mb-2 drop-shadow-sm">{ing.emoji}</span>
                   <span className={`text-xs font-bold ${isSelected ? 'text-teal-700' : 'text-slate-600'}`}>
-                    {ing.name}
+                    {t.common_ingredients?.[ing.name] || ing.name}
                   </span>
                 </motion.button>
               );
@@ -169,7 +171,7 @@ export default function PantryPage() {
                         key={ing} 
                         className="bg-white/10 border border-white/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2"
                       >
-                        {ing}
+                        {t.common_ingredients?.[ing] || ing}
                         <button onClick={() => removeIngredient(ing)} className="hover:text-rose-400 transition-colors p-0.5 rounded-full hover:bg-white/10"><X size={14}/></button>
                       </motion.div>
                     ))}

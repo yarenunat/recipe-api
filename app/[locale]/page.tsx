@@ -10,6 +10,7 @@ import Image from "next/image";
 import { useAppStore } from "@/store/useAppStore";
 import { signOut, useSession } from "next-auth/react";
 import { useDictionary } from "@/components/DictionaryProvider";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
@@ -26,6 +27,10 @@ export default function Home() {
   const [showCuisineModal, setShowCuisineModal] = useState(false);
   const { recipes, isRecipesLoaded, fetchRecipes } = useAppStore();
   
+  const titlesToTranslate = recipes.map(r => r.title);
+  const translatedTitles = useTranslationCache(titlesToTranslate, currentLocale);
+  const getTranslatedTitle = (index: number) => translatedTitles[index] || recipes[index]?.title;
+
   const dict = useDictionary();
   const t = dict.home;
 
@@ -349,7 +354,7 @@ export default function Home() {
                     <div className="relative z-20 text-white">
                       <div className="flex justify-between items-start mb-2">
                         <h2 className="text-3xl font-bold leading-tight line-clamp-2 pr-4 text-white drop-shadow-md">
-                          {recipes[0].title}
+                          {getTranslatedTitle(0)}
                         </h2>
                       </div>
                       <p className="text-sm text-white/90 mb-4 line-clamp-1 max-w-[250px]">
@@ -433,13 +438,13 @@ export default function Home() {
                         <div className="w-full h-24 rounded-xl overflow-hidden bg-slate-100 relative">
                           <Image 
                             src={recipe.images?.[0]?.url || "https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=800&auto=format&fit=crop"} 
-                            alt={recipe.title} 
+                            alt={getTranslatedTitle(i + 1)} 
                             className="object-cover group-hover:scale-105 transition-transform duration-500" 
                             fill
                             sizes="(max-width: 768px) 50vw, 25vw"
                           />
                         </div>
-                        <span className="font-semibold text-sm text-slate-600 line-clamp-2 leading-tight">{recipe.title}</span>
+                        <span className="font-semibold text-sm text-slate-600 line-clamp-2 leading-tight">{getTranslatedTitle(i + 1)}</span>
                         <div className="mt-auto flex items-center gap-1 text-slate-400 text-xs font-medium">
                           <Clock size={12} className="text-[var(--primary)]" />
                           {recipe.totalTime || 30}m

@@ -4,8 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Save, Plus, X, Upload, Image as ImageIcon, Check, ScanText, Sparkles } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useDictionary } from "@/components/DictionaryProvider";
 
 export default function NewRecipePage() {
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
+  const dict = useDictionary();
+  const t = dict.new_recipe;
+
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -48,7 +55,7 @@ export default function NewRecipePage() {
           const compressedB64 = canvas.toDataURL("image/jpeg", 0.7);
 
           try {
-            const res = await fetch("/api/recipes/scan", {
+            const res = await fetch(`/api/recipes/scan?locale=${locale}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ imageBase64: compressedB64 })
@@ -67,11 +74,11 @@ export default function NewRecipePage() {
             } else {
               const err = await res.text();
               console.error(err);
-              alert("Görsel taranamadı. Lütfen daha net bir fotoğraf yükleyin.");
+              alert(t.scan_error);
             }
           } catch (error) {
             console.error(error);
-            alert("Tarama sırasında bir hata oluştu.");
+            alert(t.scan_error_generic);
           }
           setScanning(false);
         };
@@ -131,12 +138,12 @@ export default function NewRecipePage() {
       if (res.ok) {
         router.push("/my-recipes");
       } else {
-        alert("Tarif kaydedilirken bir hata oluştu.");
+        alert(t.save_error_generic);
         setLoading(false);
       }
     } catch (error) {
       console.error(error);
-      alert("Bağlantı hatası.");
+      alert(t.connection_error);
       setLoading(false);
     }
   };
@@ -153,7 +160,7 @@ export default function NewRecipePage() {
               </div>
             </Link>
             <h1 className="text-xl font-black text-slate-800 tracking-tight">
-              Yeni Tarif Ekle
+              {t.title}
             </h1>
           </div>
           <button 
@@ -162,7 +169,7 @@ export default function NewRecipePage() {
             className="bg-[var(--primary)] text-white px-5 py-2.5 rounded-full font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
           >
             {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Save size={18} />}
-            Kaydet
+            {t.save_button}
           </button>
         </div>
       </header>
@@ -176,12 +183,12 @@ export default function NewRecipePage() {
               <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mb-4 border border-white/30 shadow-sm">
                 {scanning ? <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <ScanText size={32} />}
               </div>
-              <h2 className="text-xl font-black mb-2 flex items-center gap-2"><Sparkles size={20} className="text-yellow-300" /> Sihirli Tarama</h2>
-              <p className="text-sm font-medium text-white/90 mb-6 max-w-sm">El yazısı tarifinizin veya kitap sayfasının fotoğrafını çekin, yapay zeka sizin için okuyup tüm formu otomatik doldursun!</p>
+              <h2 className="text-xl font-black mb-2 flex items-center gap-2"><Sparkles size={20} className="text-yellow-300" /> {t.magic_scan_title}</h2>
+              <p className="text-sm font-medium text-white/90 mb-6 max-w-sm">{t.magic_scan_desc}</p>
               
               <div className="relative">
                 <button type="button" disabled={scanning} className="bg-white text-purple-600 px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-80 disabled:pointer-events-none">
-                  {scanning ? "Okunuyor..." : "Fotoğraf Seç / Çek"}
+                  {scanning ? t.scanning : t.photo_select_button}
                 </button>
                 <input 
                   type="file" 
@@ -206,7 +213,7 @@ export default function NewRecipePage() {
                   <img src={imageBase64} alt="Recipe" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                     <span className="bg-white text-slate-800 px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
-                      <Upload size={16} /> Resmi Değiştir
+                       <Upload size={16} /> {t.change_image}
                     </span>
                   </div>
                 </>
@@ -215,8 +222,8 @@ export default function NewRecipePage() {
                   <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-3">
                     <ImageIcon size={28} className="text-[var(--primary)]" />
                   </div>
-                  <span className="font-bold text-slate-600">Tarif Resmi Ekle</span>
-                  <span className="text-sm">Dokun veya tıkla</span>
+                  <span className="font-bold text-slate-600">{t.add_image}</span>
+                  <span className="text-sm">{t.tap_click}</span>
                 </div>
               )}
               <input 
@@ -232,25 +239,25 @@ export default function NewRecipePage() {
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-4">
             <h2 className="font-black text-lg text-slate-700 flex items-center gap-2 mb-2">
               <span className="w-6 h-6 rounded-md bg-rose-100 text-rose-500 flex items-center justify-center text-xs">1</span> 
-              Temel Bilgiler
+              {t.section_basic_info}
             </h2>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Tarif Adı *</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">{t.recipe_name_label}</label>
               <input 
                 type="text" 
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="Örn: Ev Yapımı Mantı"
+                placeholder={t.recipe_name_placeholder}
                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 font-bold text-slate-700 placeholder:text-slate-300 transition-all"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Kısa Açıklama</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">{t.desc_label}</label>
               <textarea 
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Bu tarif hakkında biraz bilgi verin..."
+                placeholder={t.desc_placeholder}
                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 font-medium text-slate-600 placeholder:text-slate-300 transition-all min-h-[100px] resize-y"
               />
             </div>
@@ -260,7 +267,7 @@ export default function NewRecipePage() {
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-4">
             <h2 className="font-black text-lg text-slate-700 flex items-center gap-2 mb-4">
               <span className="w-6 h-6 rounded-md bg-amber-100 text-amber-500 flex items-center justify-center text-xs">2</span> 
-              Malzemeler
+              {t.section_ingredients}
             </h2>
             
             <div className="space-y-3">
@@ -271,14 +278,14 @@ export default function NewRecipePage() {
                       type="text" 
                       value={ing.name}
                       onChange={e => updateIngredient(idx, 'name', e.target.value)}
-                      placeholder="Malzeme (Örn: Un)"
+                      placeholder={t.ingredient_placeholder}
                       className="w-2/3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 font-medium text-slate-600 text-sm"
                     />
                     <input 
                       type="text" 
                       value={ing.quantity}
                       onChange={e => updateIngredient(idx, 'quantity', e.target.value)}
-                      placeholder="Miktar (Örn: 2 bardak)"
+                      placeholder={t.qty_placeholder}
                       className="w-1/3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 font-medium text-slate-600 text-sm"
                     />
                   </div>
@@ -300,7 +307,7 @@ export default function NewRecipePage() {
               onClick={addIngredient}
               className="w-full mt-2 py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 font-bold hover:border-[var(--primary)]/50 hover:text-[var(--primary)] transition-colors flex items-center justify-center gap-2 text-sm"
             >
-              <Plus size={16} /> Malzeme Ekle
+              <Plus size={16} /> {t.add_ingredient_button}
             </button>
           </div>
 
@@ -308,12 +315,12 @@ export default function NewRecipePage() {
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 space-y-4">
             <h2 className="font-black text-lg text-slate-700 flex items-center gap-2 mb-2">
               <span className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-500 flex items-center justify-center text-xs">3</span> 
-              Yapılışı *
+              {t.section_instructions}
             </h2>
             <textarea 
               value={instructions}
               onChange={e => setInstructions(e.target.value)}
-              placeholder="Adım adım nasıl yapıldığını anlatın..."
+              placeholder={t.instructions_placeholder}
               className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 font-medium text-slate-600 placeholder:text-slate-300 transition-all min-h-[200px] resize-y"
               required
             />

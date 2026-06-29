@@ -49,11 +49,11 @@ export async function POST(req: Request) {
         isCustom: true,
         userId: session.user.id,
         ingredients: {
-          create: ingredients.map((ing: any) => ({
+          create: Array.from(new Map(ingredients.map((ing: any) => [ing.name.toLowerCase().trim(), ing])).values()).map((ing: any) => ({
             ingredient: {
               connectOrCreate: {
-                where: { name: ing.name.toLowerCase() },
-                create: { name: ing.name.toLowerCase() }
+                where: { name: ing.name.toLowerCase().trim() },
+                create: { name: ing.name.toLowerCase().trim() }
               }
             },
             quantity: ing.quantity || "",

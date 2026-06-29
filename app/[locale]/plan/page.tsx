@@ -5,8 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Plus, X, Utensils, Trash2, BookHeart } from "lucide-react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { useParams } from "next/navigation";
+import { useDictionary } from "@/components/DictionaryProvider";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
 
 export default function MealPlannerPage() {
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
+  const dict = useDictionary();
+  const t = dict.plan;
+  const tMealTimes = dict.health.meal_times;
+
   const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(new Date()));
   const [mealPlanItems, setMealPlanItems] = useState<any[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<any[]>([]);
@@ -23,6 +32,28 @@ export default function MealPlannerPage() {
   // Form State
   const [mealType, setMealType] = useState("Dinner");
   const [inputType, setInputType] = useState<"custom" | "recipe">("custom");
+
+  const titlesToTranslate = [
+    ...mealPlanItems.map(item => item.recipe?.title || ""),
+    ...savedRecipes.map(r => r.title)
+  ];
+  const translatedTitles = useTranslationCache(titlesToTranslate, locale);
+
+  const getTranslatedPlanTitle = (item: any) => {
+    const idx = mealPlanItems.indexOf(item);
+    if (idx !== -1 && item.recipe) {
+      return translatedTitles[idx] || item.recipe.title;
+    }
+    return item.customText;
+  };
+
+  const getTranslatedSavedRecipeTitle = (recipeId: string) => {
+    const idx = savedRecipes.findIndex(r => r.id === recipeId);
+    if (idx !== -1) {
+      return translatedTitles[mealPlanItems.length + idx] || savedRecipes[idx].title;
+    }
+    return "";
+  };
 
   useEffect(() => {
     fetchMealPlan();
@@ -149,14 +180,14 @@ export default function MealPlannerPage() {
                 </div>
               </Link>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-                Meal Plan
+                {t.title}
               </h1>
             </div>
             <div className="w-10 h-10 bg-[var(--primary)]/10 text-[var(--primary)] rounded-2xl flex items-center justify-center shadow-inner">
               <CalendarIcon size={20} />
             </div>
           </div>
-          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">Plan your week ahead with ease.</p>
+          <p className="text-slate-500 text-[15px] font-medium leading-relaxed">{t.subtitle}</p>
         </div>
       </header>
 
@@ -169,9 +200,9 @@ export default function MealPlannerPage() {
           </button>
           
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-widest">
-            {currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} 
+            {currentWeekStart.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} 
             {" - "} 
-            {new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}
           </h2>
           
           <button onClick={handleNextWeek} className="w-10 h-10 rounded-full bg-slate-50 text-slate-500 flex items-center justify-center hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors">
@@ -197,7 +228,7 @@ export default function MealPlannerPage() {
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex flex-col">
                     <span className={`text-xs font-black uppercase tracking-wider ${isToday ? 'text-[var(--primary)]' : 'text-slate-400'}`}>
-                      {day.toLocaleDateString('en-US', { weekday: 'long' })}
+                      {day.toLocaleDateString(locale, { weekday: 'long' })}
                     </span>
                     <span className="text-xl font-bold text-slate-700">{day.getDate()}</span>
                   </div>
@@ -211,15 +242,15 @@ export default function MealPlannerPage() {
 
                 <div className="space-y-2">
                   {dayItems.length === 0 ? (
-                    <p className="text-slate-400 text-sm font-medium">No meals planned yet.</p>
+                    <p className="text-slate-400 text-sm font-medium">{t.no_meals}</p>
                   ) : (
                     dayItems.map(item => (
                       <div key={item.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-[var(--primary)]/70 uppercase tracking-wider">{item.mealType}</span>
+                          <span className="text-[10px] font-black text-[var(--primary)]/70 uppercase tracking-wider">{tMealTimes[item.mealType as keyof typeof tMealTimes] || item.mealType}</span>
                           {item.recipe ? (
                             <Link href={`/recipe/${item.recipe.id}`}>
-                              <span className="text-sm font-bold text-slate-700 hover:text-[var(--primary)] transition-colors line-clamp-1">{item.recipe.title}</span>
+                              <span className="text-sm font-bold text-slate-700 hover:text-[var(--primary)] transition-colors line-clamp-1">{getTranslatedPlanTitle(item)}</span>
                             </Link>
                           ) : (
                             <span className="text-sm font-bold text-slate-700 line-clamp-1">{item.customText}</span>
@@ -260,8 +291,8 @@ export default function MealPlannerPage() {
               
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h3 className="text-xl font-black text-slate-800">Add Meal</h3>
-                  <p className="text-sm text-slate-500 font-medium">For {selectedDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                  <h3 className="text-xl font-black text-slate-800">{t.add_meal}</h3>
+                  <p className="text-sm text-slate-500 font-medium">{t.for_date} {selectedDate?.toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100">
                   <X size={20} />
@@ -272,7 +303,7 @@ export default function MealPlannerPage() {
                 
                 {/* Meal Type Selection */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Meal Time</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">{t.meal_time}</label>
                   <div className="flex gap-2">
                     {["Breakfast", "Lunch", "Dinner", "Snack"].map(type => (
                       <button
@@ -283,7 +314,7 @@ export default function MealPlannerPage() {
                           mealType === type ? "bg-[var(--primary)]/10 border-[var(--primary)]/30 text-[var(--primary)]" : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
                         }`}
                       >
-                        {type}
+                        {tMealTimes[type as keyof typeof tMealTimes] || type}
                       </button>
                     ))}
                   </div>
@@ -291,7 +322,7 @@ export default function MealPlannerPage() {
 
                 {/* Input Type Selection */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">What to eat?</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">{t.what_to_eat}</label>
                   <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-4">
                     <button
                       type="button"
@@ -300,7 +331,7 @@ export default function MealPlannerPage() {
                         inputType === "custom" ? "bg-white shadow-sm text-[var(--primary)]" : "text-slate-500"
                       }`}
                     >
-                      <Utensils size={16} /> Custom Meal
+                      <Utensils size={16} /> {t.custom_meal}
                     </button>
                     <button
                       type="button"
@@ -309,14 +340,14 @@ export default function MealPlannerPage() {
                         inputType === "recipe" ? "bg-white shadow-sm text-[var(--primary)]" : "text-slate-500"
                       }`}
                     >
-                      <BookHeart size={16} /> Saved Recipe
+                      <BookHeart size={16} /> {t.saved_recipe}
                     </button>
                   </div>
 
                   {inputType === "custom" ? (
                     <input 
                       type="text" 
-                      placeholder="e.g. Avocado Toast with Egg" 
+                      placeholder={t.custom_placeholder} 
                       value={customText}
                       onChange={e => setCustomText(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-transparent transition-all font-medium text-slate-700"
@@ -329,7 +360,7 @@ export default function MealPlannerPage() {
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 cursor-pointer flex justify-between items-center hover:bg-white hover:border-[var(--primary)]/30 transition-all font-medium text-slate-700"
                       >
                         <span className={selectedRecipeId ? "text-slate-700" : "text-slate-400"}>
-                          {selectedRecipeId ? savedRecipes.find(r => r.id === selectedRecipeId)?.title : "Select a saved recipe..."}
+                          {selectedRecipeId ? getTranslatedSavedRecipeTitle(selectedRecipeId) : t.select_recipe}
                         </span>
                         <ChevronDown size={18} className={`text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                       </div>
@@ -344,7 +375,7 @@ export default function MealPlannerPage() {
                             className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl max-h-60 overflow-y-auto overflow-x-hidden z-[130] py-2"
                           >
                             {savedRecipes.length === 0 ? (
-                              <div className="px-5 py-4 text-sm text-slate-400 text-center">No saved recipes yet.</div>
+                              <div className="px-5 py-4 text-sm text-slate-400 text-center">{t.no_saved_recipes}</div>
                             ) : (
                               savedRecipes.map((r: any) => (
                                 <div 
@@ -352,7 +383,7 @@ export default function MealPlannerPage() {
                                   onClick={() => { setSelectedRecipeId(r.id); setIsDropdownOpen(false); }}
                                   className={`px-5 py-3 cursor-pointer hover:bg-slate-50 font-medium transition-colors ${selectedRecipeId === r.id ? 'text-[var(--primary)] bg-[var(--primary)]/5' : 'text-slate-700'}`}
                                 >
-                                  {r.title}
+                                  {getTranslatedSavedRecipeTitle(r.id)}
                                 </div>
                               ))
                             )}
@@ -368,7 +399,7 @@ export default function MealPlannerPage() {
                   disabled={isSubmitting}
                   className="w-full bg-[var(--primary)] text-white rounded-2xl py-4 font-black flex items-center justify-center gap-2 hover:bg-[var(--primary)]/90 transition-all shadow-lg shadow-[var(--primary)]/20 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none mt-2 relative z-10"
                 >
-                  <Plus size={20} /> {isSubmitting ? "Adding..." : "Add to Plan"}
+                  <Plus size={20} /> {isSubmitting ? t.adding : t.add_to_plan}
                 </button>
               </form>
             </motion.div>

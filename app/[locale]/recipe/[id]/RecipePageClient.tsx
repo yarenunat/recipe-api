@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from "react";
 
 import { useDictionary } from "@/components/DictionaryProvider";
 import { ChefHat, Clock, Flame, Utensils, ChevronLeft, Sparkles } from "lucide-react";
@@ -7,6 +8,7 @@ import RecipeOptionsMenu from "@/components/RecipeOptionsMenu";
 import ClientShoppingButton from "./ClientShoppingButton";
 import ClientCookingMode from "./ClientCookingMode";
 import AddToCollectionButton from "@/components/AddToCollectionButton";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const getIngredientEmoji = (name: string) => {
   const n = name.toLowerCase();
@@ -46,18 +48,134 @@ const getIngredientEmoji = (name: string) => {
   return "🥣";
 };
 
-export default function RecipePageClient({ recipe, instructions }: { recipe: any; instructions: string[] }) {
+export default function RecipePageClient({ recipe, instructions, locale }: { recipe: any; instructions: string[]; locale: string }) {
   const dict = useDictionary();
   const t = dict.recipe;
 
+  const [displayRecipe, setDisplayRecipe] = useState(recipe);
+  const [displayInstructions, setDisplayInstructions] = useState(instructions);
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  useEffect(() => {
+    // Basic heuristic to skip translation if it's already in the target language.
+    // We check if it's already translated by looking at localStorage
+    const cacheKey = `recipe-trans-${recipe.id}-${locale}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setDisplayRecipe(parsed.recipe);
+        setDisplayInstructions(parsed.instructions);
+        return;
+      } catch (e) {
+        console.error("Failed to parse cached translation", e);
+      }
+    }
+
+    const translateRecipe = async () => {
+      setIsTranslating(true);
+      try {
+        const languageNames: Record<string, string> = {
+          tr: "Turkish",
+          en: "English",
+          es: "Spanish",
+          zh: "Chinese (Simplified)",
+          hi: "Hindi",
+        };
+        const targetLanguage = languageNames[locale] || "Turkish";
+
+        let tipsArray: string[] = [];
+        if (recipe.tips) {
+          try {
+            tipsArray = JSON.parse(recipe.tips);
+          } catch (e) {
+            if (typeof recipe.tips === "string") tipsArray = [recipe.tips];
+          }
+        }
+
+        const res = await fetch("/api/recipes/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipe,
+            instructions,
+            tipsArray,
+            targetLanguage,
+          }),
+        });
+
+        if (res.ok) {
+          const parsed = await res.json();
+          let newRecipe = { ...recipe };
+          let newInstructions = [...instructions];
+
+          if (parsed.title) {
+            newRecipe.title = parsed.title;
+            newRecipe.description = parsed.description || null;
+            newRecipe.difficultyLevel = parsed.difficultyLevel || null;
+            newRecipe.cuisineType = parsed.cuisineType || null;
+            
+            if (parsed.instructions && Array.isArray(parsed.instructions)) {
+              newInstructions = parsed.instructions;
+            }
+            
+            if (parsed.ingredients && Array.isArray(parsed.ingredients)) {
+              newRecipe.ingredients = recipe.ingredients.map((ing: any, idx: number) => {
+                const parsedIng = parsed.ingredients[idx];
+                return {
+                  ...ing,
+                  quantity: parsedIng ? parsedIng.quantity : ing.quantity,
+                  ingredient: {
+                    ...ing.ingredient,
+                    name: parsedIng ? parsedIng.name : ing.ingredient.name,
+                  }
+                };
+              });
+            }
+
+            if (parsed.tips && Array.isArray(parsed.tips)) {
+              newRecipe.tips = JSON.stringify(parsed.tips);
+            }
+
+            setDisplayRecipe(newRecipe);
+            setDisplayInstructions(newInstructions);
+
+            // Save to cache
+            localStorage.setItem(cacheKey, JSON.stringify({
+              recipe: newRecipe,
+              instructions: newInstructions
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Translation failed:", error);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+
+    translateRecipe();
+  }, [recipe, instructions, locale]);
+
   return (
     <div className="min-h-screen bg-background text-foreground font-sans pb-24">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto relative">
+        
+        {isTranslating && (
+          <div className="absolute inset-0 z-50 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center">
+              <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-700 font-medium animate-pulse">Translating recipe...</p>
+            </div>
+          </div>
+        )}
+
         {/* Top Banner / Image */}
         <div className="relative w-full h-[40vh] md:h-[50vh] bg-white overflow-hidden md:rounded-b-[3rem] shadow-sm border-b border-slate-100">
           <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-transparent to-transparent z-10"></div>
           <img
-            src={recipe.images?.[0]?.url || "https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=800&auto=format&fit=crop"}
+            src={displayRecipe.images?.[0]?.url || "https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=800&auto=format&fit=crop"}
             className="absolute inset-0 w-full h-full object-cover z-0"
             alt="Recipe Cover"
           />
@@ -70,8 +188,9 @@ export default function RecipePageClient({ recipe, instructions }: { recipe: any
               </div>
             </Link>
             <div className="flex gap-2 items-center">
-              <AddToCollectionButton recipeId={recipe.id} />
-              <RecipeOptionsMenu recipe={recipe} />
+              <LanguageSwitcher />
+              <AddToCollectionButton recipeId={displayRecipe.id} />
+              <RecipeOptionsMenu recipe={displayRecipe} />
             </div>
           </div>
 
@@ -80,15 +199,15 @@ export default function RecipePageClient({ recipe, instructions }: { recipe: any
             <div className="flex gap-3">
               <div className="bg-white/80 backdrop-blur-md rounded-2xl py-3 px-4 flex flex-col items-center justify-center shadow-sm border border-slate-100 flex-1">
                 <Clock size={20} className="text-[var(--primary)] mb-1" />
-                <span className="text-xs font-semibold text-slate-700">{recipe.totalTime || 30}m</span>
+                <span className="text-xs font-semibold text-slate-700">{displayRecipe.totalTime || 30}m</span>
               </div>
               <div className="bg-white/80 backdrop-blur-md rounded-2xl py-3 px-4 flex flex-col items-center justify-center shadow-sm border border-slate-100 flex-1">
                 <Flame size={20} className="text-[var(--primary)] mb-1" />
-                <span className="text-xs font-semibold text-slate-700">{recipe.calories || 450} kcal</span>
+                <span className="text-xs font-semibold text-slate-700">{displayRecipe.calories || 450} kcal</span>
               </div>
               <div className="bg-white/80 backdrop-blur-md rounded-2xl py-3 px-4 flex flex-col items-center justify-center shadow-sm border border-slate-100 flex-1">
                 <Utensils size={20} className="text-[var(--primary)] mb-1" />
-                <span className="text-xs font-semibold text-slate-700">{recipe.difficultyLevel || "Med"}</span>
+                <span className="text-xs font-semibold text-slate-700">{displayRecipe.difficultyLevel || "Med"}</span>
               </div>
             </div>
           </div>
@@ -98,19 +217,19 @@ export default function RecipePageClient({ recipe, instructions }: { recipe: any
           {/* Header Section */}
           <div className="md:flex md:justify-between md:items-start mb-8">
             <div className="md:w-2/3">
-              <h2 className="text-3xl font-bold mb-3 tracking-tight text-slate-700">{recipe.title}</h2>
-              <p className="text-slate-500 leading-relaxed text-lg">{recipe.description}</p>
+              <h2 className="text-3xl font-bold mb-3 tracking-tight text-slate-700">{displayRecipe.title}</h2>
+              <p className="text-slate-500 leading-relaxed text-lg">{displayRecipe.description}</p>
             </div>
 
             {/* Desktop Metrics */}
             <div className="hidden md:flex gap-4 mt-6 md:mt-0">
               <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm border border-slate-100 min-w-[5rem]">
                 <Clock size={20} className="text-[var(--primary)] mb-2" />
-                <span className="text-sm font-semibold text-slate-700">{recipe.totalTime || 30}m</span>
+                <span className="text-sm font-semibold text-slate-700">{displayRecipe.totalTime || 30}m</span>
               </div>
               <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm border border-slate-100 min-w-[5rem]">
                 <Flame size={20} className="text-[var(--primary)] mb-2" />
-                <span className="text-sm font-semibold text-slate-700">{recipe.calories || 450} kcal</span>
+                <span className="text-sm font-semibold text-slate-700">{displayRecipe.calories || 450} kcal</span>
               </div>
             </div>
           </div>
@@ -127,14 +246,14 @@ export default function RecipePageClient({ recipe, instructions }: { recipe: any
                     {t.ingredients}
                   </h3>
                   <span className="text-xs font-bold text-white bg-[var(--primary)] px-2.5 py-1 rounded-full">
-                    {recipe.ingredients.length}
+                    {displayRecipe.ingredients.length}
                   </span>
                 </div>
-                <ClientShoppingButton ingredients={recipe.ingredients} />
+                <ClientShoppingButton ingredients={displayRecipe.ingredients} />
               </div>
 
               <div className="flex flex-col gap-3">
-                {recipe.ingredients.map((ing: any, i: number) => (
+                {displayRecipe.ingredients.map((ing: any, i: number) => (
                   <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all group">
                     <div className="w-14 h-14 rounded-full bg-[var(--primary)]/10 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
                       <span className="drop-shadow-sm">{getIngredientEmoji(ing.ingredient.name)}</span>
@@ -150,7 +269,7 @@ export default function RecipePageClient({ recipe, instructions }: { recipe: any
 
             {/* Right Column: Instructions */}
             <div className="md:col-span-7 mt-8 md:mt-0">
-              <ClientCookingMode instructions={instructions} />
+              <ClientCookingMode instructions={displayInstructions} />
 
               <h3 className="text-xl font-semibold flex items-center gap-2 mb-6 text-slate-600 mt-2">
                 <ChefHat size={20} className="text-[var(--primary)]" />
@@ -158,7 +277,7 @@ export default function RecipePageClient({ recipe, instructions }: { recipe: any
               </h3>
 
               <div className="space-y-4">
-                {instructions.map((step, i) => (
+                {displayInstructions.map((step: string, i: number) => (
                   <div key={i} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex gap-5 hover:shadow-md transition-shadow">
                     <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-[var(--primary)] flex items-center justify-center font-bold flex-shrink-0 text-lg shadow-sm border border-white">
                       {i + 1}

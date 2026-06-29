@@ -9,8 +9,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useDictionary } from "@/components/DictionaryProvider";
+import { useParams } from "next/navigation";
 
 export default function HealthDashboard() {
+  const params = useParams();
+  const locale = (params?.locale as string) || "tr";
   const [activeTab, setActiveTab] = useState("calories");
   
   // Health Data
@@ -101,7 +104,7 @@ export default function HealthDashboard() {
 
   const handleAutoCalories = async () => {
     if (!foodName) {
-      alert("Please enter a food name first");
+      alert(t.alert_food_name);
       return;
     }
     setAnalyzingFood(true);
@@ -117,7 +120,7 @@ export default function HealthDashboard() {
           setCalories(data.calories.toString());
         }
       } else {
-        alert("Failed to fetch auto value.");
+        alert(t.alert_auto_value_failed);
       }
     } catch (error) {
       console.error(error);
@@ -274,7 +277,7 @@ export default function HealthDashboard() {
                       onClick={() => setIsMealTypeDropdownOpen(!isMealTypeDropdownOpen)}
                       className="bg-slate-50 text-sm border border-slate-100 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer font-bold text-[var(--primary)] hover:bg-slate-100 transition-colors shadow-sm select-none"
                     >
-                      <span>{mealType}</span>
+                      <span>{t.meal_times?.[mealType] || mealType}</span>
                       <ChevronDown size={14} className={`transition-transform duration-300 ${isMealTypeDropdownOpen ? 'rotate-180' : ''}`} />
                     </div>
                     
@@ -293,7 +296,7 @@ export default function HealthDashboard() {
                               onClick={() => { setMealType(type); setIsMealTypeDropdownOpen(false); }}
                               className={`px-4 py-2.5 cursor-pointer hover:bg-slate-50 font-bold text-sm transition-colors ${mealType === type ? 'text-[var(--primary)] bg-[var(--primary)]/5' : 'text-slate-600'}`}
                             >
-                              {type}
+                              {t.meal_times?.[type] || type}
                             </div>
                           ))}
                         </motion.div>
@@ -365,9 +368,9 @@ export default function HealthDashboard() {
                       let formattedDate = dateKey;
                       if (parts.length === 3) {
                         const localDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                        formattedDate = localDate.toLocaleDateString('tr-TR', { weekday: 'long', month: 'long', day: 'numeric' });
+                        formattedDate = localDate.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
                       }
-                      if (isToday) formattedDate = `Bugün (${formattedDate})`;
+                      if (isToday) formattedDate = `${t.today_label} (${formattedDate})`;
                       
                       return (
                         <div key={dateKey} className="space-y-2">
@@ -390,7 +393,7 @@ export default function HealthDashboard() {
                               >
                                 <div className="flex flex-col gap-1">
                                   <p className="font-bold text-slate-700 capitalize text-[14px]">{log.foodName}</p>
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md w-fit">{log.mealType}</span>
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md w-fit">{t.meal_times?.[log.mealType] || log.mealType}</span>
                                 </div>
                                 <div className="bg-[var(--primary)]/10 text-[var(--primary)] px-3 py-1.5 rounded-xl font-black text-sm">
                                   +{log.calories}
@@ -429,7 +432,7 @@ export default function HealthDashboard() {
                  <input 
                    type="number" 
                    step="0.1" 
-                   placeholder="Enter today's weight (kg)" 
+                   placeholder={t.weight_placeholder} 
                    value={newWeight} 
                    onChange={e => setNewWeight(e.target.value)} 
                    className="flex-1 bg-slate-50 sm:bg-transparent rounded-xl sm:rounded-none border-none px-4 py-3 sm:py-2 outline-none font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium" 
@@ -453,7 +456,7 @@ export default function HealthDashboard() {
                        <div key={log.id} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 group">
                          <div className="flex flex-col gap-1">
                            <span className="text-slate-400 text-xs font-bold uppercase tracking-wide">
-                             {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                             {new Date(log.date).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}
                            </span>
                          </div>
                          <div className="flex items-center gap-3">

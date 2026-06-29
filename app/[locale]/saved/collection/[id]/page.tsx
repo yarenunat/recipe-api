@@ -6,11 +6,16 @@ import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Trash2, Clock, Flame, Utensils, Plus, X, Search, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { useDictionary } from "@/components/DictionaryProvider";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
 
 export default function CollectionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const locale = (params?.locale as string) || "tr";
+  const dict = useDictionary();
+  const t = dict.saved;
 
   const [collection, setCollection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -133,6 +138,20 @@ export default function CollectionDetailPage() {
     [allRecipes, searchQuery]
   );
 
+  const collectionRecipeTitles = collection?.recipes?.map((cr: any) => cr.recipe.title) || [];
+  const addSheetTitles = addSheetOpen ? filteredRecipes.map(r => r.title) : [];
+  
+  const titlesToTranslate = [...collectionRecipeTitles, ...addSheetTitles];
+  const translatedTitles = useTranslationCache(titlesToTranslate, locale);
+
+  const getTranslatedCollectionRecipeTitle = (index: number) => {
+    return translatedTitles[index] || collection.recipes[index].recipe.title;
+  };
+
+  const getTranslatedAddSheetTitle = (index: number) => {
+    return translatedTitles[collectionRecipeTitles.length + index] || filteredRecipes[index].title;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -170,14 +189,14 @@ export default function CollectionDetailPage() {
           )}
           <div className="flex items-center justify-between mt-3">
             <p className="text-sm font-bold text-[var(--primary)]">
-              {collection.recipes.length} Tarif
+              {collection.recipes.length} {t.recipes_count}
             </p>
             {/* Add Recipe Button */}
             <button
               onClick={openAddSheet}
               className="flex items-center gap-1.5 px-4 py-2 bg-[var(--primary)] text-white rounded-full text-sm font-bold shadow-sm hover:opacity-90 transition-opacity"
             >
-              <Plus size={16} /> Tarif Ekle
+              <Plus size={16} /> {t.add_recipe}
             </button>
           </div>
         </div>
@@ -193,20 +212,20 @@ export default function CollectionDetailPage() {
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
               <Utensils size={32} className="text-slate-300" />
             </div>
-            <h3 className="text-lg font-bold text-slate-600 mb-2">Koleksiyon Boş</h3>
+            <h3 className="text-lg font-bold text-slate-600 mb-2">{t.empty_collection}</h3>
             <p className="text-slate-400 text-sm max-w-[200px] font-medium mb-5">
-              Bu koleksiyona henüz tarif eklenmemiş.
+              {t.empty_collection_desc}
             </p>
             <button
               onClick={openAddSheet}
               className="flex items-center gap-2 px-5 py-2.5 bg-[var(--primary)] text-white rounded-full text-sm font-bold shadow-sm hover:opacity-90 transition-opacity"
             >
-              <Plus size={16} /> Tarif Ekle
+              <Plus size={16} /> {t.add_recipe}
             </button>
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {collection.recipes.map((cr: any) => {
+            {collection.recipes.map((cr: any, index: number) => {
               const recipe = cr.recipe;
               return (
                 <Link href={`/recipe/${recipe.id}`} key={recipe.id}>
@@ -224,7 +243,7 @@ export default function CollectionDetailPage() {
                       />
                     </div>
                     <div className="p-5 flex-1 flex flex-col">
-                      <h3 className="text-lg font-bold text-slate-700 leading-tight mb-2 line-clamp-2 pr-8">{recipe.title}</h3>
+                      <h3 className="text-lg font-bold text-slate-700 leading-tight mb-2 line-clamp-2 pr-8">{getTranslatedCollectionRecipeTitle(index)}</h3>
                       <div className="flex gap-4 mt-auto pt-4">
                         <div className="flex items-center gap-1 text-slate-500 text-sm font-medium">
                           <Clock size={16} className="text-[var(--primary)]" />
@@ -272,7 +291,7 @@ export default function CollectionDetailPage() {
               <div className="flex-shrink-0 pt-3 pb-4 px-6">
                 <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4" />
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-black text-slate-800">Tarif Ekle</h2>
+                  <h2 className="text-2xl font-black text-slate-800">{t.add_recipe}</h2>
                   <button
                     onClick={() => setAddSheetOpen(false)}
                     className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
@@ -287,7 +306,7 @@ export default function CollectionDetailPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tarif ara..."
+                    placeholder={t.search_placeholder}
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-10 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 text-slate-700"
                   />
                 </div>
@@ -302,10 +321,10 @@ export default function CollectionDetailPage() {
                 ) : filteredRecipes.length === 0 ? (
                   <div className="text-center py-12 text-slate-400">
                     <Utensils size={36} className="mx-auto mb-3 text-slate-200" />
-                    <p className="font-medium">Tarif bulunamadı</p>
+                    <p className="font-medium">{t.no_recipes_found}</p>
                   </div>
                 ) : (
-                  filteredRecipes.map((recipe) => {
+                  filteredRecipes.map((recipe, index) => {
                     const isInCollection = collectionRecipeIds.has(recipe.id);
                     const isAdding = addingId === recipe.id;
                     return (
@@ -330,10 +349,10 @@ export default function CollectionDetailPage() {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <p className={`font-bold text-sm truncate ${isInCollection ? "text-emerald-700" : "text-slate-700"}`}>
-                            {recipe.title}
+                            {getTranslatedAddSheetTitle(index)}
                           </p>
                           <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                            <Clock size={11} /> {recipe.totalTime || 30}dk
+                            <Clock size={11} /> {recipe.totalTime || 30}{t.minutes_abbr}
                             <Flame size={11} className="ml-1" /> {recipe.calories || 400} kcal
                           </p>
                         </div>
@@ -362,10 +381,10 @@ export default function CollectionDetailPage() {
       {/* Confirm: Delete Collection */}
       <ConfirmDialog
         open={deleteCollectionConfirm}
-        title="Koleksiyonu Sil"
-        message="Bu koleksiyonu ve içindeki tüm tariflerin bağlantısını kalıcı olarak silmek istediğinize emin misiniz?"
-        confirmLabel="Evet, Sil"
-        cancelLabel="Vazgeç"
+        title={t.delete_collection_title}
+        message={t.delete_collection_msg}
+        confirmLabel={t.confirm_delete}
+        cancelLabel={t.cancel}
         variant="danger"
         onConfirm={() => { setDeleteCollectionConfirm(false); handleDeleteCollection(); }}
         onCancel={() => setDeleteCollectionConfirm(false)}
@@ -374,10 +393,10 @@ export default function CollectionDetailPage() {
       {/* Confirm: Remove Recipe from Collection */}
       <ConfirmDialog
         open={!!removeRecipeConfirm}
-        title="Tarifi Çıkar"
-        message="Bu tarifi koleksiyondan çıkarmak istediğinize emin misiniz?"
-        confirmLabel="Evet, Çıkar"
-        cancelLabel="Vazgeç"
+        title={t.remove_recipe_title}
+        message={t.remove_recipe_msg}
+        confirmLabel={t.confirm_remove}
+        cancelLabel={t.cancel}
         variant="warning"
         onConfirm={() => { const id = removeRecipeConfirm!; setRemoveRecipeConfirm(null); doRemoveRecipe(id); }}
         onCancel={() => setRemoveRecipeConfirm(null)}
