@@ -1,3 +1,7 @@
+<img width="1920" height="1080" alt="Adsız tasarım (1)" src="https://github.com/user-attachments/assets/dc6235e9-79b3-4e65-9bd7-a444ae1a9344" />
+<img width="1920" height="1080" alt="Adsız tasarım (2)" src="https://github.com/user-attachments/assets/e06dab87-7ab8-4ac8-81d6-3975945be8eb" />
+<img width="1920" height="1080" alt="Adsız tasarım - Kopya" src="https://github.com/user-attachments/assets/35fcb5a9-ccf7-4ccf-b42e-b13f226464ca" />
+
 <<<<<<< HEAD
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
